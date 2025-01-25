@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,4 +5,130 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+model Posts {
+  id        String     @id @default(uuid())
+  userId    String
+  mediaUrl  String
+  caption   String?
+  createdAt DateTime   @default(now())
+  likes     Likes[]
+  comments  Comments[]
+  user      Profiles   @relation(fields: [userId], references: [id])
+}
+
+model Likes {
+  id        String   @id @default(uuid())
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+  post      Posts    @relation(fields: [postId], references: [id])
+  user      Profiles @relation(fields: [userId], references: [id])
+}
+
+model Followers {
+  id          String   @id @default(uuid())
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+  follower    Profiles @relation("FollowerRelation", fields: [followerId], references: [id])
+  following   Profiles @relation("FollowingRelation", fields: [followingId], references: [id])
+}
+
+model DirectMessages {
+  id         String   @id @default(uuid())
+  senderId   String
+  receiverId String
+  content    String
+  createdAt  DateTime @default(now())
+  read       Boolean  @default(false)
+  sender     Profiles @relation("Sender", fields: [senderId], references: [id])
+  receiver   Profiles @relation("Receiver", fields: [receiverId], references: [id])
+}
+
+model Profiles {
+  id               String           @id @default(uuid())
+  userId           String           @unique
+  username         String
+  avatarUrl        String?
+  createdAt        DateTime         @default(now())
+  role             String
+  lastSignInAt     DateTime?
+  posts            Posts[]
+  likes            Likes[]
+  comments         Comments[]
+  followers        Followers[]      @relation("FollowerRelation")
+  following        Followers[]      @relation("FollowingRelation")
+  sentMessages     DirectMessages[] @relation("Sender")
+  receivedMessages DirectMessages[] @relation("Receiver")
+  adViews          AdViews[]
+  adClicks         AdClicks[]
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model Comments {
+  id        String   @id @default(uuid())
+  postId    String
+  userId    String
+  content   String
+  createdAt DateTime @default(now())
+  post      Posts    @relation(fields: [postId], references: [id])
+  user      Profiles @relation(fields: [userId], references: [id])
+}
+
+model Products {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  price       Float
+  imageUrl    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model AdViews {
+  id       String         @id @default(uuid())
+  adId     String
+  userId   String
+  viewedAt DateTime       @default(now())
+  ad       Advertisements @relation(fields: [adId], references: [id])
+  user     Profiles       @relation(fields: [userId], references: [id])
+}
+
+model AdClicks {
+  id        String         @id @default(uuid())
+  adId      String
+  userId    String
+  clickedAt DateTime       @default(now())
+  ad        Advertisements @relation(fields: [adId], references: [id])
+  user      Profiles       @relation(fields: [userId], references: [id])
+}
+
+model Advertisements {
+  id            String     @id @default(uuid())
+  title         String
+  description   String
+  mediaUrl      String
+  mediaType     String
+  linkUrl       String
+  startDate     DateTime
+  endDate       DateTime
+  dailyLimit    Int?
+  scheduleStart DateTime?
+  scheduleEnd   DateTime?
+  showOnStartup Boolean    @default(false)
+  active        Boolean    @default(true)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  adViews       AdViews[]
+  adClicks      AdClicks[]
+}
+
+model User {
+  id       String    @id @default(uuid())
+  email    String    @unique
+  password String
+  profile  Profiles? @relation
 }
