@@ -1,11 +1,13 @@
 import {
-  Injectable,
   BadRequestException,
   HttpException,
   HttpStatus,
+  Injectable,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import * as Yup from 'yup';
 import { PrismaService } from '../prisma/prisma.service';
+import { registerValidation } from '../validations/register.validation';
 
 @Injectable()
 export class RegisterService {
@@ -15,6 +17,8 @@ export class RegisterService {
     const { email, password, username } = data;
 
     try {
+      await registerValidation.validate({ email, password }, { abortEarly: false });
+
       const salt = await bcrypt.genSalt(10);
       const hashedPassword = await bcrypt.hash(password, salt);
 
@@ -52,7 +56,19 @@ export class RegisterService {
         role: newProfile.role,
       };
     } catch (error) {
-      throw new BadRequestException(error.message);
+      if (error instanceof Yup.ValidationError) {
+        throw new BadRequestException({
+          statusCode: HttpStatus.BAD_REQUEST,
+          message: error.errors,
+          error: 'Validation Error',
+        });
+      }
+
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        message: error.message || 'Erro desconhecido',
+        error: 'Bad Request',
+      });
     }
   }
 }
