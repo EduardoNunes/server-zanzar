@@ -7,7 +7,7 @@ import {
 import * as bcrypt from 'bcrypt';
 import * as Yup from 'yup';
 import { PrismaService } from '../prisma/prisma.service';
-import { registerValidation } from '../validations/register.validation';
+import { registerValidation } from '../common/validations/register.validation';
 
 @Injectable()
 export class RegisterService {
