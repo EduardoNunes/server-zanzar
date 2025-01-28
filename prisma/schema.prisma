@@ -7,24 +7,25 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Posts {
+model Posts { 
   id        String     @id @default(uuid())
-  userId    String
+  profileId String
   mediaUrl  String
   caption   String?
+  isPublic  Boolean    @default(false)
   createdAt DateTime   @default(now())
   likes     Likes[]
   comments  Comments[]
-  user      Profiles   @relation(fields: [userId], references: [id])
+  profile   Profiles   @relation(fields: [profileId], references: [id])
 }
 
 model Likes {
   id        String   @id @default(uuid())
   postId    String
-  userId    String
+  profileId String
   createdAt DateTime @default(now())
   post      Posts    @relation(fields: [postId], references: [id])
-  user      Profiles @relation(fields: [userId], references: [id])
+  profile   Profiles @relation(fields: [profileId], references: [id])
 }
 
 model Followers {
@@ -71,11 +72,11 @@ model Profiles {
 model Comments {
   id        String   @id @default(uuid())
   postId    String
-  userId    String
+  profileId String
   content   String
   createdAt DateTime @default(now())
   post      Posts    @relation(fields: [postId], references: [id])
-  user      Profiles @relation(fields: [userId], references: [id])
+  profile   Profiles @relation(fields: [profileId], references: [id])
 }
 
 model Products {
@@ -91,19 +92,19 @@ model Products {
 model AdViews {
   id       String         @id @default(uuid())
   adId     String
-  userId   String
+  profileId String
   viewedAt DateTime       @default(now())
   ad       Advertisements @relation(fields: [adId], references: [id])
-  user     Profiles       @relation(fields: [userId], references: [id])
+  profile  Profiles       @relation(fields: [profileId], references: [id])
 }
 
 model AdClicks {
   id        String         @id @default(uuid())
   adId      String
-  userId    String
+  profileId String
   clickedAt DateTime       @default(now())
   ad        Advertisements @relation(fields: [adId], references: [id])
-  user      Profiles       @relation(fields: [userId], references: [id])
+  profile   Profiles       @relation(fields: [profileId], references: [id])
 }
 
 model Advertisements {
