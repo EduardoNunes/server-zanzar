@@ -7,6 +7,8 @@ import {
   HttpException,
   HttpStatus,
   Headers,
+  Get,
+  Query,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { PostsService } from './post-with-image.service';
@@ -16,7 +18,7 @@ export class PostsController {
   constructor(private readonly postsService: PostsService) {}
 
   @Post('upload-and-create')
-  @UseInterceptors(FileInterceptor('file')) // Interceptor para lidar com o upload do arquivo
+  @UseInterceptors(FileInterceptor('file'))
   async createPost(
     @UploadedFile() file: Express.Multer.File,
     @Body('userId') userId: string,
@@ -42,5 +44,15 @@ export class PostsController {
       userId,
       caption,
     );
+  }
+
+  @Get('get-all')
+  async getAllPosts(@Query('userId') userId: string) {
+    return this.postsService.getAllPosts(userId);
+  }
+
+  @Post('likes')
+  async like(@Body() body: any) {
+    return this.postsService.handleLike(body);
   }
 }

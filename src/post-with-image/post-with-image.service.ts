@@ -1,4 +1,9 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  HttpException,
+  HttpStatus,
+  Injectable,
+} from '@nestjs/common';
 import { createClient } from '@supabase/supabase-js';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -55,7 +60,7 @@ export class PostsService {
           HttpStatus.INTERNAL_SERVER_ERROR,
         );
       }
- 
+
       const newPost = await this.prisma.posts.create({
         data: {
           profileId: profile.id,
@@ -72,6 +77,180 @@ export class PostsService {
         'Erro ao criar o post. Por favor, tente novamente.',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
+    }
+  }
+
+  async getAllPosts(loggedInUserId: string) {
+    try {
+      const profileId = await this.prisma.profiles.findUnique({
+        select: { id: true },
+        where: { userId: loggedInUserId },
+      });
+
+      const posts = await this.prisma.posts.findMany({
+        select: {
+          id: true,
+          mediaUrl: true,
+          caption: true,
+          createdAt: true,
+          profile: {
+            select: {
+              username: true,
+              avatarUrl: true,
+            },
+          },
+          likes: {
+            select: {
+              id: true,
+              profile: {
+                select: {
+                  id: true,
+                  username: true,
+                },
+              },
+            },
+          },
+          comments: {
+            select: {
+              id: true,
+              content: true,
+              profile: {
+                select: {
+                  username: true,
+                },
+              },
+            },
+          },
+          _count: {
+            select: {
+              likes: true,
+            },
+          },
+        },
+      });
+
+      const postsWithSignedUrls = await Promise.all(
+        posts.map(async (post) => {
+          try {
+            if (!post.mediaUrl) {
+              console.warn(`Post ${post.id} não possui mediaUrl. Ignorando...`);
+              return {
+                ...post,
+                mediaUrl: null,
+                likedByLoggedInUser: false,
+                likeCount: post._count.likes,
+              };
+            }
+
+            const bucketPath = post.mediaUrl.replace(
+              'https://livpgjkudsvjcvapfcjq.supabase.co/storage/v1/object/public/zanzar-images/',
+              '',
+            );
+
+            const { data, error } = await this.supabase.storage
+              .from('zanzar-images')
+              .createSignedUrl(bucketPath, 3600);
+
+            if (error || !data?.signedUrl) {
+              console.error(
+                `Erro ao gerar URL assinada para o post ${post.id}:`,
+                error,
+              );
+              return {
+                ...post,
+                mediaUrl: null,
+                likedByLoggedInUser: false,
+                likeCount: post._count.likes,
+              };
+            }
+
+            const likedByLoggedInUser = post.likes.some(
+              (like) => like.profile.id === profileId.id,
+            );
+
+            return {
+              ...post,
+              mediaUrl: data.signedUrl,
+              likedByLoggedInUser,
+              likeCount: post._count.likes,
+            };
+          } catch (error) {
+            console.error(`Erro ao processar o post ${post.id}:`, error);
+            return {
+              ...post,
+              mediaUrl: null,
+              likedByLoggedInUser: false,
+              likeCount: post._count.likes,
+            };
+          }
+        }),
+      );
+
+      return postsWithSignedUrls;
+    } catch (error) {
+      console.error('Erro ao buscar os posts:', error);
+      throw new HttpException(
+        'Erro ao buscar os posts. Por favor, tente novamente.',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  async handleLike(data: any) {
+    const { postId, userId } = data;
+
+    try {
+      const profile = await this.prisma.profiles.findUnique({
+        where: { userId },
+      });
+
+      if (!profile) {
+        throw new HttpException(
+          'Perfil não encontrado para o userId fornecido',
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      const existingLike = await this.prisma.likes.findFirst({
+        where: {
+          postId,
+          profileId: profile.id,
+        },
+      });
+
+      if (existingLike) {
+        await this.prisma.likes.delete({
+          where: {
+            id: existingLike.id,
+          },
+        });
+
+        return {
+          message: 'Like removido com sucesso',
+          postId,
+          profileId: profile.id,
+        };
+      } else {
+        const newLike = await this.prisma.likes.create({
+          data: {
+            postId,
+            profileId: profile.id,
+          },
+        });
+
+        return {
+          message: 'Like registrado com sucesso',
+          likeId: newLike.id,
+          postId: newLike.postId,
+          profileId: newLike.profileId,
+        };
+      }
+    } catch (error) {
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        message: error.message || 'Erro desconhecido',
+        error: 'Bad Request',
+      });
     }
   }
 }
