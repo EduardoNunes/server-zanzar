@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { createClient } from '@supabase/supabase-js';
 import { PrismaService } from '../prisma/prisma.service';
+import { create } from 'domain';
 
 @Injectable()
 export class PostsService {
@@ -124,6 +125,7 @@ export class PostsService {
           _count: {
             select: {
               likes: true,
+              comments: true,
             },
           },
         },
@@ -161,6 +163,7 @@ export class PostsService {
                 mediaUrl: null,
                 likedByLoggedInUser: false,
                 likeCount: post._count.likes,
+                commentCount: post._count.comments,
               };
             }
 
@@ -173,6 +176,7 @@ export class PostsService {
               mediaUrl: data.signedUrl,
               likedByLoggedInUser,
               likeCount: post._count.likes,
+              commentCount: post._count.comments,
             };
           } catch (error) {
             console.error(`Erro ao processar o post ${post.id}:`, error);
@@ -181,6 +185,7 @@ export class PostsService {
               mediaUrl: null,
               likedByLoggedInUser: false,
               likeCount: post._count.likes,
+              commentCount: post._count.comments,
             };
           }
         }),
@@ -206,7 +211,7 @@ export class PostsService {
 
       if (!profile) {
         throw new HttpException(
-          'Perfil não encontrado para o userId fornecido',
+          'Perfil não encontrado faça login com um usuário válido.',
           HttpStatus.NOT_FOUND,
         );
       }
@@ -245,6 +250,44 @@ export class PostsService {
           profileId: newLike.profileId,
         };
       }
+    } catch (error) {
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        message: error.message || 'Erro desconhecido',
+        error: 'Bad Request',
+      });
+    }
+  }
+
+  async handleComments(data: any) {
+    const { postId, userId, content } = data;
+    try {
+      const profile = await this.prisma.profiles.findUnique({
+        where: { userId },
+      });
+
+      if (!profile) {
+        throw new HttpException(
+          'Perfil não encontrado faça login com um usuário válido.',
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      const newComment = await this.prisma.comments.create({
+        data: {
+          postId,
+          profileId: profile.id,
+          content,
+        },
+      });
+
+      return {
+        message: 'Like registrado com sucesso',
+        content: newComment.content,
+        postId: newComment.postId,
+        profileId: newComment.profileId,
+        createdAt: newComment.createdAt,
+      };
     } catch (error) {
       throw new BadRequestException({
         statusCode: HttpStatus.BAD_REQUEST,

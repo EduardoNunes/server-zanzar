@@ -55,4 +55,9 @@ export class PostsController {
   async like(@Body() body: any) {
     return this.postsService.handleLike(body);
   }
+
+  @Post('comments')
+  async comments(@Body() body: any) {
+    return this.postsService.handleComments(body);
+  }
 }
