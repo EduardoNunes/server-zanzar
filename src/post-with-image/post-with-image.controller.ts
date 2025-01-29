@@ -58,6 +58,14 @@ export class PostsController {
 
   @Post('comments')
   async comments(@Body() body: any) {
-    return this.postsService.handleComments(body);
+    return this.postsService.addComments(body);
+  }
+
+  @Get('comments')
+  async getComments(
+    @Query('postId') postId: string,
+    @Query('page') page: number = 1,
+  ) {
+    return this.postsService.get15comments(postId, page);
   }
 }

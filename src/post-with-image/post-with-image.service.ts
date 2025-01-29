@@ -111,17 +111,6 @@ export class PostsService {
               },
             },
           },
-          comments: {
-            select: {
-              id: true,
-              content: true,
-              profile: {
-                select: {
-                  username: true,
-                },
-              },
-            },
-          },
           _count: {
             select: {
               likes: true,
@@ -259,7 +248,7 @@ export class PostsService {
     }
   }
 
-  async handleComments(data: any) {
+  async addComments(data: any) {
     const { postId, userId, content } = data;
     try {
       const profile = await this.prisma.profiles.findUnique({
@@ -288,6 +277,49 @@ export class PostsService {
         profileId: newComment.profileId,
         createdAt: newComment.createdAt,
       };
+    } catch (error) {
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        message: error.message || 'Erro desconhecido',
+        error: 'Bad Request',
+      });
+    }
+  }
+
+  async get15comments(postId: string, page: number = 1) {
+    console.log('FETCH', postId, page);
+    const commentsPerPage = 15;
+
+    try {
+      // Verificando se o postId é válido
+      const post = await this.prisma.posts.findUnique({
+        where: { id: postId },
+      });
+
+      if (!post) {
+        throw new BadRequestException('Post não encontrado.');
+      }
+
+      const skip = (page - 1) * commentsPerPage;
+
+      const comments = await this.prisma.comments.findMany({
+        where: { postId },
+        skip,
+        take: commentsPerPage,
+        include: {
+          profile: {
+            select: {
+              username: true,
+              avatarUrl: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
+
+      return comments;
     } catch (error) {
       throw new BadRequestException({
         statusCode: HttpStatus.BAD_REQUEST,
