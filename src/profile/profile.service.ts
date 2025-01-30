@@ -17,15 +17,41 @@ export class ProfileService {
   constructor(private prisma: PrismaService) {}
 
   async getProfile(userId: any) {
-    console.log('userId', userId);
     try {
       const userProfile = await this.prisma.profiles.findUnique({
         where: { userId },
       });
 
+      if (!userProfile) {
+        throw new BadRequestException('Perfil não encontrado.');
+      }
+
+      let avatarUrl = userProfile.avatarUrl;
+
+      if (avatarUrl) {
+        const bucketPath = avatarUrl.replace(
+          'https://livpgjkudsvjcvapfcjq.supabase.co/storage/v1/object/public/',
+          '',
+        );
+
+        console.log('SERVICE - Bucket Path:', bucketPath);
+
+        const { data, error } = await this.supabase.storage
+          .from('zanzar-images')
+          .createSignedUrl(bucketPath, 3600);
+
+        if (error) {
+          throw new BadRequestException(
+            `Erro ao gerar URL assinada: ${error.message}`,
+          );
+        }
+
+        avatarUrl = data?.signedUrl;
+      }
+
       return {
         username: userProfile.username,
-        avatar: userProfile.avatarUrl,
+        avatarUrl,
         role: userProfile.role,
         profileId: userProfile.userId,
       };
@@ -113,7 +139,6 @@ export class ProfileService {
               };
             }
 
-            // Verifica se o usuário autenticado curtiu o post
             const likedByLoggedInUser = post.likes.some(
               (like) => like.profile.id === profile.id,
             );
@@ -145,6 +170,44 @@ export class ProfileService {
         'Erro ao buscar os posts. Por favor, tente novamente.',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
+    }
+  }
+
+  async updateProfileImage(userId: string, avatarFile: Express.Multer.File) {
+    console.log('SERVICE', userId, avatarFile);
+    try {
+      if (!avatarFile) {
+        throw new BadRequestException('Nenhum arquivo de imagem enviado.');
+      }
+
+      const { data, error } = await this.supabase.storage
+        .from('zanzar-images')
+        .upload(`avatars/${userId}-avatar.png`, avatarFile.buffer, {
+          cacheControl: '3600',
+          upsert: true,
+        });
+
+      if (error) {
+        throw new BadRequestException(
+          `Erro ao fazer upload da imagem: ${error.message}`,
+        );
+      }
+
+      const avatarUrl = `https://livpgjkudsvjcvapfcjq.supabase.co/storage/v1/object/public/avatars/${userId}-avatar.png`;
+
+      await this.prisma.profiles.update({
+        where: { userId },
+        data: { avatarUrl },
+      });
+
+      return { avatarUrl };
+    } catch (error) {
+      console.error('Erro ao atualizar imagem de perfil:', error);
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        message: error.message || 'Erro desconhecido',
+        error: 'Bad Request',
+      });
     }
   }
 }
