@@ -291,7 +291,6 @@ export class PostsService {
     const commentsPerPage = 15;
 
     try {
-      // Verificando se o postId é válido
       const post = await this.prisma.posts.findUnique({
         where: { id: postId },
       });
