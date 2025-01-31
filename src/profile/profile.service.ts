@@ -80,6 +80,8 @@ export class ProfileService {
         profileId: userProfile.userId,
         isFollowed: isFollowed,
         isOwnProfile: decodedToken.sub === userProfile.userId,
+        followersCount: userProfile.followersCount,
+        followingCount: userProfile.followingCount,
       };
     } catch (error) {
       throw new BadRequestException({
@@ -238,11 +240,11 @@ export class ProfileService {
 
   async followProfile(followerId: string, followingId: string) {
     try {
+      // Busca os perfis do seguidor e do perfil a ser seguido
       const existingFollower = await this.prisma.profiles.findUnique({
         where: { userId: followerId },
         select: { id: true },
       });
-
       const existingFollowing = await this.prisma.profiles.findUnique({
         where: { userId: followingId },
         select: { id: true },
@@ -252,6 +254,7 @@ export class ProfileService {
         throw new Error('Algum perfil não foi encontrado.');
       }
 
+      // Verifica se a relação de seguimento já existe
       const existingFollow = await this.prisma.followers.findFirst({
         where: {
           followerId: existingFollower.id,
@@ -260,21 +263,49 @@ export class ProfileService {
       });
 
       if (existingFollow) {
-        await this.prisma.followers.delete({
-          where: { id: existingFollow.id },
+        // Se a relação já existe, remove-a (deixar de seguir)
+        await this.prisma.$transaction(async (tx) => {
+          await tx.followers.delete({
+            where: { id: existingFollow.id },
+          });
+
+          // Decrementa as contagens
+          await tx.profiles.update({
+            where: { id: existingFollower.id },
+            data: { followingCount: { decrement: 1 } },
+          });
+
+          await tx.profiles.update({
+            where: { id: existingFollowing.id },
+            data: { followersCount: { decrement: 1 } },
+          });
         });
 
         return { message: 'Você deixou de seguir este perfil.' };
+      } else {
+        // Se a relação não existe, cria-a (seguir)
+        await this.prisma.$transaction(async (tx) => {
+          await tx.followers.create({
+            data: {
+              followerId: existingFollower.id,
+              followingId: existingFollowing.id,
+            },
+          });
+
+          // Incrementa as contagens
+          await tx.profiles.update({
+            where: { id: existingFollower.id },
+            data: { followingCount: { increment: 1 } },
+          });
+
+          await tx.profiles.update({
+            where: { id: existingFollowing.id },
+            data: { followersCount: { increment: 1 } },
+          });
+        });
+
+        return { message: 'Perfil seguido com sucesso!' };
       }
-
-      const result = await this.prisma.followers.create({
-        data: {
-          followerId: existingFollower.id,
-          followingId: existingFollowing.id,
-        },
-      });
-
-      return { message: 'Perfil seguido com sucesso!', data: result };
     } catch (error) {
       console.error('Erro ao alternar o estado de seguir:', error);
       throw new BadRequestException({
