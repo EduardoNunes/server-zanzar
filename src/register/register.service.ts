@@ -36,7 +36,10 @@ export class RegisterService {
         );
       }
 
-      const formattedUsername = username.toLowerCase().trim().replace(/\s+/g, "_");
+      const formattedUsername = username
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, '_');
 
       const existName = await this.prisma.profiles.findUnique({
         where: { username: formattedUsername },
