@@ -1,7 +1,9 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
+  Headers,
   Param,
   Post,
   UploadedFile,
@@ -15,8 +17,16 @@ export class ProfileController {
   constructor(private readonly profileService: ProfileService) {}
 
   @Get('user-profile/:username')
-  async getProfile(@Param('username') username: string) {
-    return this.profileService.getProfile(username);
+  async getProfile(
+    @Param('username') username: string,
+    @Headers('authorization') authorizationHeader: string,
+  ) {
+    const token = authorizationHeader?.replace('Bearer ', '');
+    if (!token) {
+      throw new BadRequestException('Token de autorização ausente.');
+    }
+
+    return this.profileService.getProfile(username, token);
   }
 
   @Get('user-posts/:userId')

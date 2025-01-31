@@ -6,9 +6,11 @@ import {
 } from '@nestjs/common';
 import { createClient } from '@supabase/supabase-js';
 import { PrismaService } from 'src/prisma/prisma.service';
+import * as jwt from 'jsonwebtoken';
 
 @Injectable()
 export class ProfileService {
+  private jwtToken = process.env.JWT_SECRET;
   private supabase = createClient(
     process.env.SUPABASE_URL,
     process.env.SUPABASE_KEY,
@@ -16,14 +18,38 @@ export class ProfileService {
 
   constructor(private prisma: PrismaService) {}
 
-  async getProfile(username: any) {
+  async getProfile(username: string, token: string) {
     try {
+      let decodedToken: any;
+      try {
+        decodedToken = jwt.verify(token, this.jwtToken);
+      } catch (error) {
+        throw new BadRequestException('Token inválido ou expirado.');
+      }
       const userProfile = await this.prisma.profiles.findUnique({
         where: { username },
       });
 
       if (!userProfile) {
         throw new BadRequestException('Perfil não encontrado.');
+      }
+
+      //se iguais está no próprio perfil, se n visitando perfil de alguém
+      let isFollowed = false;
+      if (decodedToken.sub !== userProfile.userId) {
+        const selfProfile = await this.prisma.profiles.findUnique({
+          where: { userId: decodedToken.sub },
+        });
+        if (!selfProfile) {
+          throw new BadRequestException('Perfil do visitante não encontrado.');
+        }
+        const followRelation = await this.prisma.followers.findFirst({
+          where: {
+            followerId: selfProfile.id,
+            followingId: userProfile.id,
+          },
+        });
+        isFollowed = !!followRelation;
       }
 
       let avatarUrl = userProfile.avatarUrl;
@@ -52,6 +78,8 @@ export class ProfileService {
         avatarUrl,
         role: userProfile.role,
         profileId: userProfile.userId,
+        isFollowed: isFollowed,
+        isOwnProfile: decodedToken.sub === userProfile.userId,
       };
     } catch (error) {
       throw new BadRequestException({
