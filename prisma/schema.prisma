@@ -33,8 +33,11 @@ model Followers {
   followerId  String
   followingId String
   createdAt   DateTime @default(now())
-  follower    Profiles @relation("FollowerRelation", fields: [followerId], references: [id])
-  following   Profiles @relation("FollowingRelation", fields: [followingId], references: [id])
+
+  follower  Profiles @relation("FollowerRelation", fields: [followerId], references: [id])
+  following Profiles @relation("FollowingRelation", fields: [followingId], references: [id])
+
+  @@unique([followerId, followingId])
 }
 
 model DirectMessages {
@@ -49,28 +52,29 @@ model DirectMessages {
 }
 
 model Profiles {
-  id               String           @id @default(uuid())
-  userId           String           @unique
-  username         String           @unique
+  id               String             @id @default(uuid())
+  userId           String             @unique
+  username         String             @unique
   avatarUrl        String?
-  createdAt        DateTime         @default(now())
+  createdAt        DateTime           @default(now())
   role             String
   lastSignInAt     DateTime?
   posts            Posts[]
   likes            Likes[]
   comments         Comments[]
-  followers        Followers[]      @relation("FollowerRelation")
-  following        Followers[]      @relation("FollowingRelation")
-  sentMessages     DirectMessages[] @relation("Sender")
-  receivedMessages DirectMessages[] @relation("Receiver")
+  followers        Followers[]        @relation("FollowerRelation")
+  following        Followers[]        @relation("FollowingRelation")
+  sentMessages     DirectMessages[]   @relation("Sender")
+  receivedMessages DirectMessages[]   @relation("Receiver")
   adViews          AdViews[]
   adClicks         AdClicks[]
-
-  user User @relation(fields: [userId], references: [id])
-
+  user             User               @relation(fields: [userId], references: [id])
   chatParticipants ChatParticipants[]
   chatMessages     ChatMessages[]
   chatReadStatus   ChatReadStatus[]
+
+  followersCount Int @default(0)
+  followingCount Int @default(0)
 }
 
 model Comments {
