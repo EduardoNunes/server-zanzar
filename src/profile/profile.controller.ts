@@ -36,4 +36,12 @@ export class ProfileController {
 
     return this.profileService.updateProfileImage(userId, file);
   }
+
+  @Post('follow-profile')
+  async followProfile(
+    @Body('userId') userId: string,
+    @Body('profileId') profileId: string,
+  ) {
+    return this.profileService.followProfile(userId, profileId);
+  }
 }

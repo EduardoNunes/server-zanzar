@@ -207,4 +207,53 @@ export class ProfileService {
       });
     }
   }
+
+  async followProfile(followerId: string, followingId: string) {
+    try {
+      const existingFollower = await this.prisma.profiles.findUnique({
+        where: { userId: followerId },
+        select: { id: true },
+      });
+
+      const existingFollowing = await this.prisma.profiles.findUnique({
+        where: { userId: followingId },
+        select: { id: true },
+      });
+
+      if (!existingFollower || !existingFollowing) {
+        throw new Error('Algum perfil não foi encontrado.');
+      }
+
+      const existingFollow = await this.prisma.followers.findFirst({
+        where: {
+          followerId: existingFollower.id,
+          followingId: existingFollowing.id,
+        },
+      });
+
+      if (existingFollow) {
+        await this.prisma.followers.delete({
+          where: { id: existingFollow.id },
+        });
+
+        return { message: 'Você deixou de seguir este perfil.' };
+      }
+
+      const result = await this.prisma.followers.create({
+        data: {
+          followerId: existingFollower.id,
+          followingId: existingFollowing.id,
+        },
+      });
+
+      return { message: 'Perfil seguido com sucesso!', data: result };
+    } catch (error) {
+      console.error('Erro ao alternar o estado de seguir:', error);
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        message: error.message || 'Erro desconhecido',
+        error: 'Bad Request',
+      });
+    }
+  }
 }
