@@ -96,6 +96,7 @@ export class PostsService {
           createdAt: true,
           profile: {
             select: {
+              id: true,
               username: true,
               avatarUrl: true,
             },
@@ -123,46 +124,63 @@ export class PostsService {
       const postsWithSignedUrls = await Promise.all(
         posts.map(async (post) => {
           try {
-            if (!post.mediaUrl) {
-              console.warn(`Post ${post.id} não possui mediaUrl. Ignorando...`);
-              return {
-                ...post,
-                mediaUrl: null,
-                likedByLoggedInUser: false,
-                likeCount: post._count.likes,
-              };
+            let signedMediaUrl = null;
+            let signedAvatarUrl = null;
+
+            if (post.mediaUrl) {
+              const mediaPath = post.mediaUrl.replace(
+                'https://livpgjkudsvjcvapfcjq.supabase.co/storage/v1/object/public/zanzar-images/',
+                '',
+              );
+
+              const { data, error } = await this.supabase.storage
+                .from('zanzar-images')
+                .createSignedUrl(mediaPath, 3600);
+
+              if (error) {
+                console.error(
+                  `Erro ao gerar URL assinada para o post ${post.id}:`,
+                  error,
+                );
+              } else {
+                signedMediaUrl = data.signedUrl;
+              }
             }
 
-            const bucketPath = post.mediaUrl.replace(
-              'https://livpgjkudsvjcvapfcjq.supabase.co/storage/v1/object/public/zanzar-images/',
-              '',
-            );
-
-            const { data, error } = await this.supabase.storage
-              .from('zanzar-images')
-              .createSignedUrl(bucketPath, 3600);
-
-            if (error || !data?.signedUrl) {
-              console.error(
-                `Erro ao gerar URL assinada para o post ${post.id}:`,
-                error,
+            if (post.profile.avatarUrl) {
+              const avatarPath = post.profile.avatarUrl.replace(
+                'https://livpgjkudsvjcvapfcjq.supabase.co/storage/v1/object/public/',
+                '',
               );
-              return {
-                ...post,
-                mediaUrl: null,
-                likedByLoggedInUser: false,
-                likeCount: post._count.likes,
-                commentCount: post._count.comments,
-              };
+
+              const { data, error } = await this.supabase.storage
+                .from('zanzar-images')
+                .createSignedUrl(avatarPath, 3600);
+
+              if (error) {
+                console.error(
+                  `Erro ao gerar URL assinada para o avatar do perfil:`,
+                  error,
+                );
+              } else {
+                signedAvatarUrl = data.signedUrl;
+              }
             }
 
             const likedByLoggedInUser = post.likes.some(
-              (like) => like.profile.id === profileId.id,
+              (like) => like.profile.id === profileId?.id,
             );
 
             return {
-              ...post,
-              mediaUrl: data.signedUrl,
+              id: post.id,
+              mediaUrl: signedMediaUrl,
+              caption: post.caption,
+              createdAt: post.createdAt,
+              profile: {
+                profileId: post.profile.id,
+                username: post.profile.username,
+                ...(signedAvatarUrl && { avatarUrl: signedAvatarUrl }),
+              },
               likedByLoggedInUser,
               likeCount: post._count.likes,
               commentCount: post._count.comments,
@@ -170,8 +188,14 @@ export class PostsService {
           } catch (error) {
             console.error(`Erro ao processar o post ${post.id}:`, error);
             return {
-              ...post,
+              id: post.id,
               mediaUrl: null,
+              caption: post.caption,
+              createdAt: post.createdAt,
+              profile: {
+                profileId: post.profile.id,
+                username: post.profile.username,
+              },
               likedByLoggedInUser: false,
               likeCount: post._count.likes,
               commentCount: post._count.comments,
@@ -287,7 +311,6 @@ export class PostsService {
   }
 
   async get15comments(postId: string, page: number = 1) {
-    console.log('FETCH', postId, page);
     const commentsPerPage = 15;
 
     try {
