@@ -7,7 +7,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Posts { 
+model Posts {
   id        String     @id @default(uuid())
   profileId String
   mediaUrl  String
@@ -51,7 +51,7 @@ model DirectMessages {
 model Profiles {
   id               String           @id @default(uuid())
   userId           String           @unique
-  username         String
+  username         String           @unique
   avatarUrl        String?
   createdAt        DateTime         @default(now())
   role             String
@@ -67,6 +67,10 @@ model Profiles {
   adClicks         AdClicks[]
 
   user User @relation(fields: [userId], references: [id])
+
+  chatParticipants ChatParticipants[]
+  chatMessages     ChatMessages[]
+  chatReadStatus   ChatReadStatus[]
 }
 
 model Comments {
@@ -90,12 +94,12 @@ model Products {
 }
 
 model AdViews {
-  id       String         @id @default(uuid())
-  adId     String
+  id        String         @id @default(uuid())
+  adId      String
   profileId String
-  viewedAt DateTime       @default(now())
-  ad       Advertisements @relation(fields: [adId], references: [id])
-  profile  Profiles       @relation(fields: [profileId], references: [id])
+  viewedAt  DateTime       @default(now())
+  ad        Advertisements @relation(fields: [adId], references: [id])
+  profile   Profiles       @relation(fields: [profileId], references: [id])
 }
 
 model AdClicks {
@@ -132,4 +136,44 @@ model User {
   email    String    @unique
   password String
   profile  Profiles? @relation
+}
+
+model ChatConversation {
+  id           String             @id @default(uuid())
+  name         String?
+  isGroup      Boolean            @default(false)
+  createdAt    DateTime           @default(now())
+  participants ChatParticipants[]
+  messages     ChatMessages[]
+}
+
+model ChatParticipants {
+  profileId      String
+  conversationId String
+  joinedAt       DateTime         @default(now())
+  profile        Profiles         @relation(fields: [profileId], references: [id])
+  conversation   ChatConversation @relation(fields: [conversationId], references: [id])
+
+  @@id([profileId, conversationId])
+}
+
+model ChatMessages {
+  id             String           @id @default(uuid())
+  content        String
+  createdAt      DateTime         @default(now())
+  conversationId String
+  profileId      String
+  conversation   ChatConversation @relation(fields: [conversationId], references: [id])
+  profile        Profiles         @relation(fields: [profileId], references: [id])
+  readStatus     ChatReadStatus[]
+}
+
+model ChatReadStatus {
+  messageId String
+  profileId String
+  readAt    DateTime     @default(now())
+  message   ChatMessages @relation(fields: [messageId], references: [id])
+  profile   Profiles     @relation(fields: [profileId], references: [id])
+
+  @@id([messageId, profileId])
 }
