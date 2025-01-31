@@ -16,10 +16,10 @@ export class ProfileService {
 
   constructor(private prisma: PrismaService) {}
 
-  async getProfile(userId: any) {
+  async getProfile(username: any) {
     try {
       const userProfile = await this.prisma.profiles.findUnique({
-        where: { userId },
+        where: { username },
       });
 
       if (!userProfile) {
@@ -33,8 +33,6 @@ export class ProfileService {
           'https://livpgjkudsvjcvapfcjq.supabase.co/storage/v1/object/public/',
           '',
         );
-
-        console.log('SERVICE - Bucket Path:', bucketPath);
 
         const { data, error } = await this.supabase.storage
           .from('zanzar-images')
@@ -64,11 +62,11 @@ export class ProfileService {
     }
   }
 
-  async getPosts(userId: string) {
+  async getPosts(username: string) {
     try {
       const profile = await this.prisma.profiles.findUnique({
         select: { id: true },
-        where: { userId },
+        where: { username },
       });
 
       if (!profile) {
@@ -174,7 +172,6 @@ export class ProfileService {
   }
 
   async updateProfileImage(userId: string, avatarFile: Express.Multer.File) {
-    console.log('SERVICE', userId, avatarFile);
     try {
       if (!avatarFile) {
         throw new BadRequestException('Nenhum arquivo de imagem enviado.');

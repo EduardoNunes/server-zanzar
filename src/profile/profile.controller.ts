@@ -14,9 +14,9 @@ import { FileInterceptor } from '@nestjs/platform-express';
 export class ProfileController {
   constructor(private readonly profileService: ProfileService) {}
 
-  @Get('user-profile/:userId')
-  async getProfile(@Param('userId') userId: string) {
-    return this.profileService.getProfile(userId);
+  @Get('user-profile/:username')
+  async getProfile(@Param('username') username: string) {
+    return this.profileService.getProfile(username);
   }
 
   @Get('user-posts/:userId')
@@ -30,12 +30,10 @@ export class ProfileController {
     @UploadedFile() file: Express.Multer.File,
     @Body('userId') userId: string,
   ) {
-    console.log('Controller', userId, file);
-
     if (!file) {
       throw new Error('Arquivo não enviado');
     }
-    console.log('CONTROLLER', userId, file);
+
     return this.profileService.updateProfileImage(userId, file);
   }
 }

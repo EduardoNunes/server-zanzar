@@ -17,7 +17,10 @@ export class RegisterService {
     const { email, password, username } = data;
 
     try {
-      await registerValidation.validate({ email, password }, { abortEarly: false });
+      await registerValidation.validate(
+        { email, password },
+        { abortEarly: false },
+      );
 
       const salt = await bcrypt.genSalt(10);
       const hashedPassword = await bcrypt.hash(password, salt);
@@ -29,6 +32,19 @@ export class RegisterService {
       if (existEmail) {
         throw new HttpException(
           'Este E-mail já está cadastrado',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const formattedUsername = username.toLowerCase().trim().replace(/\s+/g, "_");
+
+      const existName = await this.prisma.profiles.findUnique({
+        where: { username: formattedUsername },
+      });
+
+      if (existName) {
+        throw new HttpException(
+          'Já existe um usuário com esse nome',
           HttpStatus.BAD_REQUEST,
         );
       }
