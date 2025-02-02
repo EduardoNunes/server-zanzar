@@ -20,12 +20,12 @@ export class PostsService {
   async createPostWithMedia(
     file: Express.Multer.File,
     filePath: string,
-    userId: string,
+    profileId: string,
     caption: string,
   ) {
     try {
       const profile = await this.prisma.profiles.findUnique({
-        where: { userId },
+        where: { id: profileId },
       });
 
       if (!profile) {
@@ -81,14 +81,17 @@ export class PostsService {
     }
   }
 
-  async getAllPosts(loggedInUserId: string) {
+  async getAllPosts(loggedInProfileId: string) {
     try {
       const profileId = await this.prisma.profiles.findUnique({
         select: { id: true },
-        where: { userId: loggedInUserId },
+        where: { id: loggedInProfileId },
       });
 
       const posts = await this.prisma.posts.findMany({
+        orderBy: {
+          createdAt: 'desc',
+        },
         select: {
           id: true,
           mediaUrl: true,
@@ -215,11 +218,11 @@ export class PostsService {
   }
 
   async handleLike(data: any) {
-    const { postId, userId } = data;
+    const { postId, profileId } = data;
 
     try {
       const profile = await this.prisma.profiles.findUnique({
-        where: { userId },
+        where: { id: profileId },
       });
 
       if (!profile) {
@@ -273,10 +276,10 @@ export class PostsService {
   }
 
   async addComments(data: any) {
-    const { postId, userId, content } = data;
+    const { postId, profileId, content } = data;
     try {
       const profile = await this.prisma.profiles.findUnique({
-        where: { userId },
+        where: { id: profileId },
       });
 
       if (!profile) {

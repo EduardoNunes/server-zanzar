@@ -17,7 +17,7 @@ export class AuthService {
         id: true,
         email: true,
         password: true,
-        profile: { select: { role: true, username: true } },
+        profile: { select: { id: true, role: true, username: true } },
       },
     });
 
@@ -43,8 +43,9 @@ export class AuthService {
       id: user.id,
       email: user.email,
       token,
-      role: user.profile.role || "user",
-      userName: user.profile.username || "user", 
+      profileId: user.profile.id,
+      role: user.profile.role || 'user',
+      userName: user.profile.username || 'user',
     };
   }
 }

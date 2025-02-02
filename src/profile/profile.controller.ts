@@ -22,6 +22,7 @@ export class ProfileController {
     @Headers('authorization') authorizationHeader: string,
   ) {
     const token = authorizationHeader?.replace('Bearer ', '');
+
     if (!token) {
       throw new BadRequestException('Token de autorização ausente.');
     }
@@ -29,29 +30,29 @@ export class ProfileController {
     return this.profileService.getProfile(username, token);
   }
 
-  @Get('user-posts/:userId')
-  async getPosts(@Param('userId') userId: string) {
-    return this.profileService.getPosts(userId);
+  @Get('user-posts/:username')
+  async getPosts(@Param('username') username: string) {
+    return this.profileService.getPosts(username);
   }
 
   @Post('profile-image')
   @UseInterceptors(FileInterceptor('avatar'))
   async updateProfileImage(
     @UploadedFile() file: Express.Multer.File,
-    @Body('userId') userId: string,
+    @Body('profileId') profileId: string,
   ) {
     if (!file) {
       throw new Error('Arquivo não enviado');
     }
 
-    return this.profileService.updateProfileImage(userId, file);
+    return this.profileService.updateProfileImage(profileId, file);
   }
 
   @Post('follow-profile')
   async followProfile(
-    @Body('userId') userId: string,
     @Body('profileId') profileId: string,
+    @Body('currentProfileId') currentProfileId: string,
   ) {
-    return this.profileService.followProfile(userId, profileId);
+    return this.profileService.followProfile(profileId, currentProfileId);
   }
 }

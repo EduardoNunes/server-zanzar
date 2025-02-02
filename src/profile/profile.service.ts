@@ -21,38 +21,39 @@ export class ProfileService {
   async getProfile(username: string, token: string) {
     try {
       let decodedToken: any;
+      let userProfile: any;
       try {
         decodedToken = jwt.verify(token, this.jwtToken);
+
+        userProfile = await this.prisma.profiles.findUnique({
+          where: { userId: decodedToken.sub },
+        });
       } catch (error) {
         throw new BadRequestException('Token inválido ou expirado.');
       }
-      const userProfile = await this.prisma.profiles.findUnique({
+
+      const currentUserProfile = await this.prisma.profiles.findUnique({
         where: { username },
       });
 
-      if (!userProfile) {
+      if (!currentUserProfile) {
         throw new BadRequestException('Perfil não encontrado.');
       }
 
       //se iguais está no próprio perfil, se n visitando perfil de alguém
       let isFollowed = false;
-      if (decodedToken.sub !== userProfile.userId) {
-        const selfProfile = await this.prisma.profiles.findUnique({
-          where: { userId: decodedToken.sub },
-        });
-        if (!selfProfile) {
-          throw new BadRequestException('Perfil do visitante não encontrado.');
-        }
+
+      if (userProfile.id !== currentUserProfile.id) {
         const followRelation = await this.prisma.followers.findFirst({
           where: {
-            followerId: selfProfile.id,
-            followingId: userProfile.id,
+            followerId: userProfile.id,
+            followingId: currentUserProfile.id,
           },
         });
         isFollowed = !!followRelation;
       }
 
-      let avatarUrl = userProfile.avatarUrl;
+      let avatarUrl = currentUserProfile.avatarUrl;
 
       if (avatarUrl) {
         const bucketPath = avatarUrl.replace(
@@ -74,14 +75,14 @@ export class ProfileService {
       }
 
       return {
-        username: userProfile.username,
+        username: currentUserProfile.username,
         avatarUrl,
-        role: userProfile.role,
-        profileId: userProfile.userId,
+        role: currentUserProfile.role,
+        profileId: currentUserProfile.id,
         isFollowed: isFollowed,
-        isOwnProfile: decodedToken.sub === userProfile.userId,
-        followersCount: userProfile.followersCount,
-        followingCount: userProfile.followingCount,
+        isOwnProfile: userProfile.id === currentUserProfile.id,
+        followersCount: currentUserProfile.followersCount,
+        followingCount: currentUserProfile.followingCount,
       };
     } catch (error) {
       throw new BadRequestException({
@@ -104,6 +105,9 @@ export class ProfileService {
       }
 
       const posts = await this.prisma.posts.findMany({
+        orderBy: {
+          createdAt: 'desc',
+        },
         where: { profileId: profile.id },
         select: {
           id: true,
@@ -201,7 +205,7 @@ export class ProfileService {
     }
   }
 
-  async updateProfileImage(userId: string, avatarFile: Express.Multer.File) {
+  async updateProfileImage(profileId: string, avatarFile: Express.Multer.File) {
     try {
       if (!avatarFile) {
         throw new BadRequestException('Nenhum arquivo de imagem enviado.');
@@ -209,7 +213,7 @@ export class ProfileService {
 
       const { data, error } = await this.supabase.storage
         .from('zanzar-images')
-        .upload(`avatars/${userId}-avatar.png`, avatarFile.buffer, {
+        .upload(`avatars/${profileId}-avatar.png`, avatarFile.buffer, {
           cacheControl: '3600',
           upsert: true,
         });
@@ -220,10 +224,10 @@ export class ProfileService {
         );
       }
 
-      const avatarUrl = `https://livpgjkudsvjcvapfcjq.supabase.co/storage/v1/object/public/avatars/${userId}-avatar.png`;
+      const avatarUrl = `https://livpgjkudsvjcvapfcjq.supabase.co/storage/v1/object/public/avatars/${profileId}-avatar.png`;
 
       await this.prisma.profiles.update({
-        where: { userId },
+        where: { id: profileId },
         data: { avatarUrl },
       });
 
@@ -242,11 +246,12 @@ export class ProfileService {
     try {
       // Busca os perfis do seguidor e do perfil a ser seguido
       const existingFollower = await this.prisma.profiles.findUnique({
-        where: { userId: followerId },
+        where: { id: followerId },
         select: { id: true },
       });
+
       const existingFollowing = await this.prisma.profiles.findUnique({
-        where: { userId: followingId },
+        where: { id: followingId },
         select: { id: true },
       });
 

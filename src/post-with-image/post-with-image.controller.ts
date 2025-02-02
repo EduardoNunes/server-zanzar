@@ -21,7 +21,7 @@ export class PostsController {
   @UseInterceptors(FileInterceptor('file'))
   async createPost(
     @UploadedFile() file: Express.Multer.File,
-    @Body('userId') userId: string,
+    @Body('profileId') profileId: string,
     @Body('caption') caption: string,
     @Headers('Authorization') token: string,
   ) {
@@ -36,19 +36,19 @@ export class PostsController {
       throw new HttpException('Arquivo não enviado.', HttpStatus.BAD_REQUEST);
     }
 
-    const filePath = `${userId}/${Date.now()}_${file.originalname}`;
+    const filePath = `${profileId}/${Date.now()}_${file.originalname}`;
 
     return this.postsService.createPostWithMedia(
       file,
       filePath,
-      userId,
+      profileId,
       caption,
     );
   }
 
   @Get('get-all')
-  async getAllPosts(@Query('userId') userId: string) {
-    return this.postsService.getAllPosts(userId);
+  async getAllPosts(@Query('profileId') profileId: string) {
+    return this.postsService.getAllPosts(profileId);
   }
 
   @Post('likes')
