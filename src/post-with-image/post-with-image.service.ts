@@ -324,6 +324,29 @@ export class PostsService {
         },
       });
 
+      const post = await this.prisma.posts.findUnique({
+        where: { id: postId },
+        include: { profile: true }, 
+      });
+      
+      if (post.profileId !== profile.id) {
+        // Cria uma notificação para o autor da postagem
+        const notification = {
+          type: 'comment',
+          content: `${profile.username} comentou na sua postagem.`,
+          senderId: profile.id,
+          receiverId: post.profileId,
+          referenceId: postId,
+          referenceUrl: `/posts/${postId}`,
+        };
+
+        // Envia a notificação via gateway
+        this.notificationsGateway.sendNotificationToUser(
+          post.profileId,
+          notification,
+        );
+      }
+
       return {
         message: 'Like registrado com sucesso',
         content: newComment.content,
