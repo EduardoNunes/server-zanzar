@@ -20,11 +20,13 @@ export class ChatController {
     return this.chatService.createChat(nameChat, profileId, selectedProfileId);
   }
 
+  //busca pelo nome
   @Get('search-users')
   async getUsers(@Query('userName') userName: string) {
     return this.chatService.getUsers(userName);
   }
 
+  //busca pelo id
   @Get('followed-users/:profileId')
   async getFollowedUsers(@Param('profileId') profileId: string) {
     return this.chatService.getFollowedUsers(profileId);
@@ -37,8 +39,16 @@ export class ChatController {
 
   // Obter mensagens de uma conversa
   @Get('conversation/:id/messages')
-  async getConversationMessages(@Param('id') conversationId: string) {
-    return this.chatService.getConversationMessages(conversationId);
+  async getConversationMessages(
+    @Param('id') conversationId: string,
+    @Query('limit') limit: number = 15,
+    @Query('offset') offset: number = 0,
+  ) {
+    return this.chatService.getConversationMessages(
+      conversationId,
+      limit,
+      offset,
+    );
   }
 
   // Criar uma nova mensagem (via REST)
