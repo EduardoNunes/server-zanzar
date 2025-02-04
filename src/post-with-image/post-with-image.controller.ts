@@ -68,4 +68,13 @@ export class PostsController {
   ) {
     return this.postsService.get15comments(postId, page);
   }
+
+  @Get('get-single')
+  async findSinglePost(
+    @Query('postId') postId: string,
+    @Query('profileId') profileId: string,
+  ) {
+    console.log("CONTROLLER", postId, profileId)
+    return this.postsService.findSinglePost(postId, profileId);
+  }
 }

@@ -72,9 +72,12 @@ model Profiles {
   chatParticipants ChatParticipants[]
   chatMessages     ChatMessages[]
   chatReadStatus   ChatReadStatus[]
+  followersCount   Int                @default(0)
+  followingCount   Int                @default(0)
 
-  followersCount Int @default(0)
-  followingCount Int @default(0)
+  receivedNotifications Notification[] @relation("ProfileNotifications")
+
+  sentNotifications Notification[] @relation("SenderNotifications")
 }
 
 model Comments {
@@ -180,4 +183,22 @@ model ChatReadStatus {
   profile   Profiles     @relation(fields: [profileId], references: [id])
 
   @@id([messageId, profileId])
+}
+
+model Notification {
+  id           String   @id @default(uuid())
+  type         String // "like", "comment", "message"
+  content      String
+  senderId     String // ID do remetente (quem gerou a notificação)
+  receiverId   String // ID do destinatário (perfil que recebe a notificação)
+  referenceId  String? // ID do item relacionado (postagem, comentário, chat)
+  referenceUrl String? // URL opcional para redirecionamento direto
+  createdAt    DateTime @default(now())
+  isRead       Boolean  @default(false)
+
+  receiver Profiles @relation("ProfileNotifications", fields: [receiverId], references: [id])
+
+  sender Profiles @relation("SenderNotifications", fields: [senderId], references: [id])
+
+  @@map("notifications")
 }
