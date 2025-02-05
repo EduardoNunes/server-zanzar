@@ -93,7 +93,7 @@ export class ProfileService {
     }
   }
 
-  async getPosts(username: string) {
+  async getPosts(username: string, page: number = 1, limit: number = 2) {
     try {
       const profile = await this.prisma.profiles.findUnique({
         select: { id: true },
@@ -104,10 +104,14 @@ export class ProfileService {
         throw new HttpException('Perfil não encontrado.', HttpStatus.NOT_FOUND);
       }
 
+      const skip = (page - 1) * limit;
+
       const posts = await this.prisma.posts.findMany({
         orderBy: {
           createdAt: 'desc',
         },
+        skip,
+        take: Number(limit),
         where: { profileId: profile.id },
         select: {
           id: true,

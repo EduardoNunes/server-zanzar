@@ -6,6 +6,7 @@ import {
   Headers,
   Param,
   Post,
+  Query,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
@@ -31,8 +32,12 @@ export class ProfileController {
   }
 
   @Get('user-posts/:username')
-  async getPosts(@Param('username') username: string) {
-    return this.profileService.getPosts(username);
+  async getPosts(
+    @Param('username') username: string,
+    @Query('page') page: number,
+    @Query('limit') limit: number,
+  ) {
+    return this.profileService.getPosts(username, page, limit);
   }
 
   @Post('profile-image')
