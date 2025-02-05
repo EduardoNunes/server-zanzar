@@ -84,17 +84,27 @@ export class PostsService {
     }
   }
 
-  async getAllPosts(loggedInProfileId: string) {
+  async getAllPosts(loggedInProfileId: string, page: number, limit: number) {
     try {
       const profileId = await this.prisma.profiles.findUnique({
         select: { id: true },
         where: { id: loggedInProfileId },
       });
 
+      if (!profileId) {
+        throw new HttpException('Perfil não encontrado.', HttpStatus.NOT_FOUND);
+      }
+
+      // Calcula o número de registros a pular
+      const skip = (page - 1) * limit;
+
+      // Busca os posts com paginação
       const posts = await this.prisma.posts.findMany({
         orderBy: {
           createdAt: 'desc',
         },
+        skip,
+        take: Number(limit),
         select: {
           id: true,
           mediaUrl: true,
@@ -127,6 +137,7 @@ export class PostsService {
         },
       });
 
+      // Processa os posts para gerar URLs assinadas
       const postsWithSignedUrls = await Promise.all(
         posts.map(async (post) => {
           try {
@@ -138,11 +149,9 @@ export class PostsService {
                 'https://livpgjkudsvjcvapfcjq.supabase.co/storage/v1/object/public/zanzar-images/',
                 '',
               );
-
               const { data, error } = await this.supabase.storage
                 .from('zanzar-images')
                 .createSignedUrl(mediaPath, 3600);
-
               if (error) {
                 console.error(
                   `Erro ao gerar URL assinada para o post ${post.id}:`,
@@ -158,11 +167,9 @@ export class PostsService {
                 'https://livpgjkudsvjcvapfcjq.supabase.co/storage/v1/object/public/',
                 '',
               );
-
               const { data, error } = await this.supabase.storage
                 .from('zanzar-images')
                 .createSignedUrl(avatarPath, 3600);
-
               if (error) {
                 console.error(
                   `Erro ao gerar URL assinada para o avatar do perfil:`,
@@ -254,7 +261,7 @@ export class PostsService {
           postId,
           profileId: profile.id,
         };
-      } else {        
+      } else {
         const newLike = await this.prisma.likes.create({
           data: {
             postId,
@@ -265,9 +272,9 @@ export class PostsService {
         // Encontra o autor da postagem
         const post = await this.prisma.posts.findUnique({
           where: { id: postId },
-          include: { profile: true }, 
+          include: { profile: true },
         });
-        
+
         if (post.profileId !== profile.id) {
           // Cria uma notificação para o autor da postagem
           const notification = {
@@ -326,9 +333,9 @@ export class PostsService {
 
       const post = await this.prisma.posts.findUnique({
         where: { id: postId },
-        include: { profile: true }, 
+        include: { profile: true },
       });
-      
+
       if (post.profileId !== profile.id) {
         // Cria uma notificação para o autor da postagem
         const notification = {
@@ -411,11 +418,11 @@ export class PostsService {
         select: { id: true },
         where: { id: profileId },
       });
-  
+
       if (!profile) {
         throw new HttpException('Perfil não encontrado.', HttpStatus.NOT_FOUND);
       }
-  
+
       // Busca o post específico pelo ID
       const post = await this.prisma.posts.findUnique({
         where: { id: postId },
@@ -450,52 +457,60 @@ export class PostsService {
           },
         },
       });
-  
+
       if (!post) {
         throw new HttpException('Post não encontrado.', HttpStatus.NOT_FOUND);
       }
-  
+
       // Gera URLs assinadas para o post e o avatar do perfil
       let signedMediaUrl = null;
       let signedAvatarUrl = null;
-  
+
       if (post.mediaUrl) {
         const mediaPath = post.mediaUrl.replace(
           'https://livpgjkudsvjcvapfcjq.supabase.co/storage/v1/object/public/zanzar-images/',
           '',
         );
-        const { data: mediaData, error: mediaError } = await this.supabase.storage
-          .from('zanzar-images')
-          .createSignedUrl(mediaPath, 3600);
-  
+        const { data: mediaData, error: mediaError } =
+          await this.supabase.storage
+            .from('zanzar-images')
+            .createSignedUrl(mediaPath, 3600);
+
         if (mediaError) {
-          console.error(`Erro ao gerar URL assinada para o post ${post.id}:`, mediaError);
+          console.error(
+            `Erro ao gerar URL assinada para o post ${post.id}:`,
+            mediaError,
+          );
         } else {
           signedMediaUrl = mediaData.signedUrl;
         }
       }
-  
+
       if (post.profile.avatarUrl) {
         const avatarPath = post.profile.avatarUrl.replace(
           'https://livpgjkudsvjcvapfcjq.supabase.co/storage/v1/object/public/',
           '',
         );
-        const { data: avatarData, error: avatarError } = await this.supabase.storage
-          .from('zanzar-images')
-          .createSignedUrl(avatarPath, 3600);
-  
+        const { data: avatarData, error: avatarError } =
+          await this.supabase.storage
+            .from('zanzar-images')
+            .createSignedUrl(avatarPath, 3600);
+
         if (avatarError) {
-          console.error(`Erro ao gerar URL assinada para o avatar do perfil:`, avatarError);
+          console.error(
+            `Erro ao gerar URL assinada para o avatar do perfil:`,
+            avatarError,
+          );
         } else {
           signedAvatarUrl = avatarData.signedUrl;
         }
       }
-  
+
       // Verifica se o usuário logado curtiu o post
       const likedByLoggedInUser = post.likes.some(
         (like) => like.profile.id === profile.id,
       );
-  
+
       // Retorna o post processado
       return {
         id: post.id,

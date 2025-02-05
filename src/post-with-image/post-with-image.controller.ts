@@ -47,8 +47,12 @@ export class PostsController {
   }
 
   @Get('get-all')
-  async getAllPosts(@Query('profileId') profileId: string) {
-    return this.postsService.getAllPosts(profileId);
+  async getAllPosts(
+    @Query('profileId') profileId: string,
+    @Query('page') page: number,
+    @Query('limit') limit: number,
+  ) {
+    return this.postsService.getAllPosts(profileId, page, limit);
   }
 
   @Post('likes')
