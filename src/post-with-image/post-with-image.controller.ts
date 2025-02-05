@@ -74,7 +74,6 @@ export class PostsController {
     @Query('postId') postId: string,
     @Query('profileId') profileId: string,
   ) {
-    console.log("CONTROLLER", postId, profileId)
     return this.postsService.findSinglePost(postId, profileId);
   }
 }

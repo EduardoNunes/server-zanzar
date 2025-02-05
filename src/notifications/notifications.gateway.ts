@@ -3,6 +3,7 @@ import {
   WebSocketServer,
   OnGatewayConnection,
   OnGatewayDisconnect,
+  SubscribeMessage,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { Injectable } from '@nestjs/common';
@@ -38,14 +39,38 @@ export class NotificationsGateway
 
   sendNotificationToUser(profileId: string, notification: any) {
     this.notificationsService.createNotification(notification);
-console.log("GETWAY", profileId, notification)
+
     const socketId = this.connectedUsers.get(profileId);
-    console.log('SOCKEDID', socketId, profileId, notification);
+
     if (socketId) {
       this.server.to(socketId).emit('newNotification', notification);
       console.log(`Notificação enviada para o usuário: ${profileId}`);
     } else {
       console.warn(`Usuário ${profileId} não está conectado.`);
+    }
+  }
+
+  @SubscribeMessage('markAsRead')
+  async handleMarkAsRead(client: Socket, notificationId: string) {
+    const userId = client.handshake.query.userId as string;
+
+    if (!userId) {
+      throw new Error('Usuário não identificado.');
+    }
+
+    try {
+      await this.notificationsService.markAsRead(notificationId);
+
+      client.emit('notificationMarkedAsRead', { notificationId });
+
+      console.log(
+        `Notificação ${notificationId} marcada como lida pelo usuário ${userId}.`,
+      );
+    } catch (error) {
+      console.error(`Erro ao marcar notificação como lida:`, error);
+      client.emit('error', {
+        message: 'Erro ao marcar notificação como lida.',
+      });
     }
   }
 }

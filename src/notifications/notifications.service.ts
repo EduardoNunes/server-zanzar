@@ -31,7 +31,7 @@ export class NotificationsService {
   async getNotifications(receiverId: string) {
     console.log("prfileID", receiverId)
     return this.prisma.notification.findMany({
-      where: { receiverId, isRead: false },
+      where: { receiverId },
       orderBy: { createdAt: 'desc' },
     });
   }
