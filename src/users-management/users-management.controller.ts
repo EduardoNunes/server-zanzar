@@ -10,8 +10,7 @@ export class UsersManagementController {
 
   @Get('stats/total')
   async getUsersTotal() {
-    try {
-      console.log("Getting total users");
+    try {      
       const count = await this.usersManagementService.getUsersTotal();
       return { count };
     } catch (error) {
@@ -22,8 +21,7 @@ export class UsersManagementController {
 
   @Get('stats/24h')
   async getActiveUsers24h() {
-    try {
-      console.log("Getting 24h active users");
+    try {      
       const count = await this.usersManagementService.getActiveUsers24h();
       return { count };
     } catch (error) {
@@ -34,8 +32,7 @@ export class UsersManagementController {
 
   @Get('stats/7d')
   async getActiveUsers7d() {
-    try {
-      console.log("Getting 7d active users");
+    try {      
       const count = await this.usersManagementService.getActiveUsers7d();
       return { count };
     } catch (error) {
@@ -46,8 +43,7 @@ export class UsersManagementController {
 
   @Get('stats/30d')
   async getActiveUsers30d() {
-    try {
-      console.log("Getting 30d active users");
+    try {      
       const count = await this.usersManagementService.getActiveUsers30d();
       return { count };
     } catch (error) {
@@ -58,8 +54,7 @@ export class UsersManagementController {
 
   @Get()
   async getAllUsers(@Query('page') page: string = '1') {
-    try {
-      console.log("Getting all users, page:", page);
+    try {      
       const pageNumber = parseInt(page, 10);
       const users = await this.usersManagementService.getAllUsers(pageNumber);
       return users;
