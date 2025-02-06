@@ -31,6 +31,12 @@ export class AuthService {
       throw new BadRequestException('Email ou senha inválidos');
     }
 
+    // Update lastSignInAt in profile
+    await this.prisma.profiles.update({
+      where: { id: user.profile.id },
+      data: { lastSignInAt: new Date() },
+    });
+
     const payload = {
       email: user.email,
       sub: user.id,
