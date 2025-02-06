@@ -11,11 +11,13 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(payload: any) {
-    if (!payload) {
+  async validate(payload: any) {    
+
+    if (!payload) {      
       throw new UnauthorizedException('Token inválido ou expirado');
     }
 
-    return { userId: payload.sub, email: payload.email, role: payload.role };
+    const user = { sub: payload.sub, email: payload.email, role: payload.role };    
+    return user;
   }
 }
