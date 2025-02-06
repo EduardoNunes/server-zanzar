@@ -9,9 +9,26 @@ import { ChatService } from './chat/chat.service';
 import { ChatModule } from './chat/chat.module';
 import { ProfileModule } from './profile/profile.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { AdvertisementsModule } from './advertisements/advertisements.module';
+import { AdminModule } from './admin/admin.module';
+import { PostsManagementModule } from './posts-management/posts-management.module';
+import { MessagesManagementModule } from './messages-management/messages-management.module';
+import { UsersManagementModule } from './users-management/users-management.module';
 
 @Module({
-  imports: [AuthModule, RegisterModule, PostsModule, ChatModule, ProfileModule, NotificationsModule],
+  imports: [
+    AuthModule,
+    RegisterModule,
+    PostsModule,
+    ChatModule,
+    ProfileModule,
+    NotificationsModule,
+    AdvertisementsModule,
+    AdminModule,
+    PostsManagementModule,
+    MessagesManagementModule,
+    UsersManagementModule,
+  ],
   controllers: [AppController, ChatController],
   providers: [AppService, ChatService],
 })
