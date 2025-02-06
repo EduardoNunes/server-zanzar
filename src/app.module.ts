@@ -14,6 +14,7 @@ import { AdminModule } from './admin/admin.module';
 import { PostsManagementModule } from './posts-management/posts-management.module';
 import { MessagesManagementModule } from './messages-management/messages-management.module';
 import { UsersManagementModule } from './users-management/users-management.module';
+import { ActivityManagementModule } from './activity-management/activity-management.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { UsersManagementModule } from './users-management/users-management.modul
     PostsManagementModule,
     MessagesManagementModule,
     UsersManagementModule,
+    ActivityManagementModule,
   ],
   controllers: [AppController, ChatController],
   providers: [AppService, ChatService],
