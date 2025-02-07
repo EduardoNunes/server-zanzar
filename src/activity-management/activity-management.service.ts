@@ -32,7 +32,7 @@ export class ActivityManagementService {
         });
 
         const likesCount = await this.prisma.likes.count({
-          where: { userId: user.id },
+          where: { profileId: user.id },
         });
 
         return {
