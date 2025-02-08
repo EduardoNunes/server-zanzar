@@ -20,12 +20,13 @@ export class AdvertisementsManagementService {
     const advertisementsWithCounts = await Promise.all(
       advertisements.map(async (ad) => {
         const viewsCount = await this.prisma.adViews.count({
-          where: { id: ad.id },
+          where: { adId: ad.id },
         });
 
         const clicksCount = await this.prisma.adClicks.count({
-          where: { id: ad.id },
+          where: { adId: ad.id },
         });
+
 
         return {
           ...ad,
@@ -34,7 +35,6 @@ export class AdvertisementsManagementService {
         };
       })
     );
-
     // Generate signed URLs for advertisements
     const advertisementsWithSignedUrls = await Promise.all(
       advertisementsWithCounts.map(async (ad) => {
