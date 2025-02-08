@@ -9,12 +9,13 @@ import { ChatService } from './chat/chat.service';
 import { ChatModule } from './chat/chat.module';
 import { ProfileModule } from './profile/profile.module';
 import { NotificationsModule } from './notifications/notifications.module';
-import { AdvertisementsModule } from './advertisements/advertisements.module';
 import { AdminModule } from './admin/admin.module';
 import { PostsManagementModule } from './posts-management/posts-management.module';
 import { MessagesManagementModule } from './messages-management/messages-management.module';
 import { UsersManagementModule } from './users-management/users-management.module';
 import { ActivityManagementModule } from './activity-management/activity-management.module';
+import { AdvertisementsManagementModule } from './advertisements-management/advertisements-management.module';
+import { AdModalModule } from './ad-modal/ad-modal.module';
 
 @Module({
   imports: [
@@ -24,12 +25,13 @@ import { ActivityManagementModule } from './activity-management/activity-managem
     ChatModule,
     ProfileModule,
     NotificationsModule,
-    AdvertisementsModule,
     AdminModule,
     PostsManagementModule,
     MessagesManagementModule,
     UsersManagementModule,
     ActivityManagementModule,
+    AdvertisementsManagementModule,
+    AdModalModule,
   ],
   controllers: [AppController, ChatController],
   providers: [AppService, ChatService],
