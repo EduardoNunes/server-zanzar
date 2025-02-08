@@ -52,13 +52,13 @@ export class AdminController {
     }
   }
 
-  @Get('users/recent')
-  async getRecentUsers() {
+  @Get('users/total')
+  async getTotalUsers() {
     try {
-      const users = await this.adminService.getRecentUsers();
-      return users;
+      const count = await this.adminService.getTotalUsers();
+      return { count };
     } catch (error) {
-      console.error("Error in getRecentUsers:", error);
+      console.error("Error in getTotalUsers:", error);
       throw error;
     }
   }

@@ -21,17 +21,8 @@ export class AdminService {
     return this.prisma.advertisements.count();
   }
 
-  async getRecentUsers() {
-    return this.prisma.profiles.findMany({
-      select: {
-        username: true,
-        lastSignInAt: true,
-      },
-      orderBy: {
-        lastSignInAt: 'desc',
-      },
-      take: 15,
-    });
+  async getTotalUsers(): Promise<number> {
+    return this.prisma.profiles.count();
   }
 
   async getPostsTotal() {
