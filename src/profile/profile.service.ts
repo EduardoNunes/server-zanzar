@@ -83,6 +83,7 @@ export class ProfileService {
         isOwnProfile: userProfile.id === currentUserProfile.id,
         followersCount: currentUserProfile.followersCount,
         followingCount: currentUserProfile.followingCount,
+        totalPosts: currentUserProfile.totalPosts,
       };
     } catch (error) {
       throw new BadRequestException({

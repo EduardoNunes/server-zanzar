@@ -74,6 +74,7 @@ model Profiles {
   chatReadStatus   ChatReadStatus[]
   followersCount   Int                @default(0)
   followingCount   Int                @default(0)
+  totalPosts       Int                @default(0)
 
   receivedNotifications Notification[] @relation("ProfileNotifications")
 

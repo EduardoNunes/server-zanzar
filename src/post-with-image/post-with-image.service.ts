@@ -65,12 +65,21 @@ export class PostsService {
         );
       }
 
+      // Create the post
       const newPost = await this.prisma.posts.create({
         data: {
           profileId: profile.id,
           mediaUrl,
           caption,
           isPublic: true,
+        },
+      });
+
+      // Increment totalPosts for the profile
+      await this.prisma.profiles.update({
+        where: { id: profileId },
+        data: { 
+          totalPosts: { increment: 1 } 
         },
       });
 
