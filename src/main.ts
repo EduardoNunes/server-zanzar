@@ -7,8 +7,8 @@ async function bootstrap() {
   app.enableCors({
     origin: [
       'https://zanzar.netlify.app', // URL do frontend hospedado no Netlify
-      //'http://localhost:3000', // URL do frontend hospedado localmente
       null, // Permite requisições de dispositivos móveis (como o APK gerado com o Capacitor)
+      //'http://localhost:3000', // URL do frontend hospedado localmente
     ],
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],
