@@ -49,7 +49,7 @@ export class AdvertisementsManagementService {
             const { data, error } = await this.supabase.storage
               .from('zanzar-images')
               .createSignedUrl(mediaPath, 3600);  // 1 hour expiration
-            
+
             if (error) {
               console.error(
                 `Error generating signed URL for advertisement ${ad.id}:`,
@@ -79,7 +79,7 @@ export class AdvertisementsManagementService {
 
   async getActiveAdvertisements() {
     const advertisements = await this.prisma.advertisements.findMany({
-      where: { 
+      where: {
         active: true,
         startDate: { lte: new Date() },
         endDate: { gte: new Date() }
@@ -101,7 +101,7 @@ export class AdvertisementsManagementService {
             const { data, error } = await this.supabase.storage
               .from('zanzar-images')
               .createSignedUrl(mediaPath, 3600);  // 1 hour expiration
-            
+
             if (error) {
               console.error(
                 `Error generating signed URL for advertisement ${ad.id}:`,
@@ -147,17 +147,17 @@ export class AdvertisementsManagementService {
 
     // Add date validation and parsing
     const parseDate = (dateString: string | undefined): Date | null => {
-      console.log(`Parsing date: ${dateString}`);
+
       if (!dateString) return null;
-      
+
       const parsedDate = new Date(dateString);
-      
+
       // Check if the date is valid
       if (isNaN(parsedDate.getTime())) {
         console.error(`Invalid date provided: ${dateString}`);
         throw new BadRequestException(`Invalid date provided: ${dateString}`);
       }
-      
+
       return parsedDate;
     };
 
@@ -194,20 +194,20 @@ export class AdvertisementsManagementService {
       showOnStartup,
       active,
     } = data;
-    console.log("ID AQUI3", data)
+
     // Add date validation and parsing
     const parseDate = (dateString: string | undefined): Date | null => {
-      console.log(`Parsing date: ${dateString}`);
+
       if (!dateString) return null;
-      
+
       const parsedDate = new Date(dateString);
-      
+
       // Check if the date is valid
       if (isNaN(parsedDate.getTime())) {
         console.error(`Invalid date provided: ${dateString}`);
         throw new BadRequestException(`Invalid date provided: ${dateString}`);
       }
-      
+
       return parsedDate;
     };
 
@@ -231,19 +231,62 @@ export class AdvertisementsManagementService {
   }
 
   async deleteAdvertisement(id: string) {
-    // Delete related records first
-    await this.prisma.adViews.deleteMany({
-      where: { id: id },
-    });
+    try {
+      // First, check if the advertisement exists
+      const existingAd = await this.prisma.advertisements.findUnique({
+        where: { id }
+      });
 
-    await this.prisma.adClicks.deleteMany({
-      where: { id: id },
-    });
+      if (!existingAd) {
+        throw new BadRequestException(`Advertisement with id ${id} not found`);
+      }
 
-    // Then delete the advertisement
-    await this.prisma.advertisements.delete({
-      where: { id },
-    });   
+      // If the advertisement has a media URL, attempt to delete from Supabase storage
+      if (existingAd.mediaUrl) {
+        try {
+          // Extract the file path from the mediaUrl
+          const mediaPath = existingAd.mediaUrl.split('/').slice(3).join('/');
+          
+          const { error: deleteError } = await this.supabase.storage
+            .from('zanzar-images')
+            .remove([mediaPath]);
+
+          if (deleteError) {
+            console.warn(`Could not delete media file for advertisement ${id}:`, deleteError);
+          }
+        } catch (storageError) {
+          console.error(`Error attempting to delete media for advertisement ${id}:`, storageError);
+        }
+      }
+
+      // Delete related records to handle foreign key constraints
+      await this.prisma.adViews.deleteMany({
+        where: { adId: id }
+      });
+
+      await this.prisma.adClicks.deleteMany({
+        where: { adId: id }
+      });
+
+      // Delete the advertisement from the database
+      const deletedAd = await this.prisma.advertisements.delete({
+        where: { id },
+      });
+
+      console.log(`Successfully deleted advertisement with id ${id}`);
+      return deletedAd;
+    } catch (error) {
+      console.error(`Error deleting advertisement with id ${id}:`, error);
+
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+
+      throw new HttpException(
+        `Failed to delete advertisement: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
   }
 
   async uploadAdvertisementMedia(file: Express.Multer.File): Promise<string> {
@@ -322,17 +365,17 @@ export class AdvertisementsManagementService {
 
       // Add date validation and parsing
       const parseDate = (dateString: string | undefined): Date | null => {
-        console.log(`Parsing date: ${dateString}`);
+
         if (!dateString) return null;
-        
+
         const parsedDate = new Date(dateString);
-        
+
         // Check if the date is valid
         if (isNaN(parsedDate.getTime())) {
           console.error(`Invalid date provided: ${dateString}`);
           throw new BadRequestException(`Invalid date provided: ${dateString}`);
         }
-        
+
         return parsedDate;
       };
 
@@ -429,15 +472,15 @@ export class AdvertisementsManagementService {
       // Add date validation and parsing
       const parseDate = (dateString: string | undefined): Date | null => {
         if (!dateString) return null;
-        
+
         const parsedDate = new Date(dateString);
-        
+
         // Check if the date is valid
         if (isNaN(parsedDate.getTime())) {
           console.error(`Invalid date provided: ${dateString}`);
           throw new BadRequestException(`Invalid date provided: ${dateString}`);
         }
-        
+
         return parsedDate;
       };
 
@@ -466,7 +509,7 @@ export class AdvertisementsManagementService {
         }
       });
 
-      console.log(`Successfully updated advertisement with id ${id}`);
+
       return advertisement;
     } catch (error) {
       console.error('Detailed error updating advertisement:', error);

@@ -99,7 +99,7 @@ export class AdvertisementsManagementController {
 
   @Delete(':id')
   async deleteAdvertisement(@Param('id') id: string) {
-    try {
+    try {      
       await this.advertisementsService.deleteAdvertisement(id);
       return { message: 'Advertisement deleted successfully' };
     } catch (error) {
