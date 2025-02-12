@@ -194,7 +194,7 @@ export class AdvertisementsManagementService {
       showOnStartup,
       active,
     } = data;
-
+    console.log("ID AQUI3", data)
     // Add date validation and parsing
     const parseDate = (dateString: string | undefined): Date | null => {
       console.log(`Parsing date: ${dateString}`);
@@ -243,7 +243,7 @@ export class AdvertisementsManagementService {
     // Then delete the advertisement
     await this.prisma.advertisements.delete({
       where: { id },
-    });
+    });   
   }
 
   async uploadAdvertisementMedia(file: Express.Multer.File): Promise<string> {
@@ -375,6 +375,20 @@ export class AdvertisementsManagementService {
     data: any
   ) {
     try {
+      // First, check if the advertisement exists
+      const existingAd = await this.prisma.advertisements.findUnique({
+        where: { id }
+      });
+
+      if (!existingAd) {
+        throw new BadRequestException(`Advertisement with id ${id} not found`);
+      }
+
+      // Validate input data
+      if (!data) {
+        throw new BadRequestException('No update data provided');
+      }
+
       // Generate unique file path
       const fileExtension = file.originalname.split('.').pop();
       const fileName = `advertisements/${Date.now()}.${fileExtension}`;
@@ -388,6 +402,7 @@ export class AdvertisementsManagementService {
           });
 
       if (uploadError) {
+        console.error('Supabase upload error:', uploadError);
         throw new HttpException(
           `Failed to upload media file: ${uploadError.message}`,
           HttpStatus.INTERNAL_SERVER_ERROR
@@ -413,7 +428,6 @@ export class AdvertisementsManagementService {
 
       // Add date validation and parsing
       const parseDate = (dateString: string | undefined): Date | null => {
-        console.log(`Parsing date: ${dateString}`);
         if (!dateString) return null;
         
         const parsedDate = new Date(dateString);
@@ -426,6 +440,12 @@ export class AdvertisementsManagementService {
         
         return parsedDate;
       };
+
+      // Careful type conversion
+      const dailyLimit = data.dailyLimit ? Number(data.dailyLimit) : null;
+      if (dailyLimit !== null && isNaN(dailyLimit)) {
+        throw new BadRequestException('Invalid daily limit value');
+      }
 
       // Update advertisement
       const advertisement = await this.prisma.advertisements.update({
@@ -441,21 +461,22 @@ export class AdvertisementsManagementService {
           dailyLimit: Number(data.dailyLimit) || null,
           scheduleStart: parseDate(data.scheduleStart),
           scheduleEnd: parseDate(data.scheduleEnd),
-          showOnStartup: Boolean(data.showOnStartup),
-          active: Boolean(data.active)
+          showOnStartup: data.showOnStartup === 'true' || data.showOnStartup === true,
+          active: data.active === 'true' || data.active === true
         }
       });
 
+      console.log(`Successfully updated advertisement with id ${id}`);
       return advertisement;
     } catch (error) {
-      console.error('Error updating advertisement:', error);
+      console.error('Detailed error updating advertisement:', error);
 
-      if (error instanceof HttpException) {
+      if (error instanceof HttpException || error instanceof BadRequestException) {
         throw error;
       }
 
       throw new HttpException(
-        'Failed to update advertisement',
+        `Failed to update advertisement: ${error.message}`,
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
