@@ -94,10 +94,14 @@ export class ProfileService {
     }
   }
 
-  async getPosts(username: string, page: number = 1, limit: number = 2) {
+  async getPosts(
+    username: string, 
+    page: number = 1, 
+    limit: number = 2, 
+    loggedInProfileId?: string
+  ) {
     try {
       const profile = await this.prisma.profiles.findUnique({
-        select: { id: true },
         where: { username },
       });
 
@@ -176,9 +180,10 @@ export class ProfileService {
               };
             }
 
-            const likedByLoggedInUser = post.likes.some(
-              (like) => like.profile.id === profile.id,
-            );
+            // Check if the logged-in profile has liked the post
+            const likedByLoggedInUser = loggedInProfileId 
+              ? post.likes.some((like) => like.profile.id === loggedInProfileId)
+              : false;
 
             return {
               ...post,
