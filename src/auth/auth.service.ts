@@ -37,6 +37,14 @@ export class AuthService {
       data: { lastSignInAt: new Date() },
     });
 
+    // Count unread notifications
+    const unreadNotificationsCount = await this.prisma.notification.count({
+      where: {
+        receiverId: user.profile.id,
+        isRead: false,
+      },
+    });
+
     const payload = {
       email: user.email,
       sub: user.id,
@@ -52,6 +60,7 @@ export class AuthService {
       profileId: user.profile.id,
       role: user.profile.role || 'user',
       userName: user.profile.username || 'user',
+      unreadNotificationsCount,
     };
   }
 }
