@@ -4,7 +4,7 @@ import { ChatService } from './chat.service';
 
 @Controller('chat')
 export class ChatController {
-  constructor(private readonly chatService: ChatService) {}
+  constructor(private readonly chatService: ChatService) { }
 
   @Post('create-chat')
   async createChat(
@@ -64,13 +64,6 @@ export class ChatController {
     return this.chatService.createMessage(data);
   }
 
-  @Post('mark-message-read')
-  async markMessageAsRead(
-    @Body() data: { messageId: string; profileId: string }
-  ) {
-    return this.chatService.markMessageAsRead(data.messageId, data.profileId);
-  }
-
   @Post('mark-conversation-read')
   async markConversationAsRead(
     @Body() data: { conversationId: string; profileId: string }
@@ -81,5 +74,10 @@ export class ChatController {
   @Get('unread-messages-count')
   async getUnreadMessagesCount(@Query('profileId') profileId: string) {
     return this.chatService.getUnreadMessagesCount(profileId);
+  }
+
+  @Get('unread-messages/:id')
+  async getMyUnreadMessages(@Param('id') profileId: string) {
+    return this.chatService.getMyUnreadMessages(profileId);
   }
 }

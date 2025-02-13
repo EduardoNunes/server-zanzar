@@ -33,6 +33,13 @@ export class ChatGateway {
     @ConnectedSocket() client: Socket,
   ) {
     const message = await this.chatService.createMessage(data);
+    
+    // Automaticamente marcar mensagens anteriores como lidas para o destinatário
+    await this.chatService.markConversationAsRead(
+      data.conversationId, 
+      message.profileId
+    );
+
     this.server.to(data.conversationId).emit('newMessage', message);
     return message;
   }
@@ -45,6 +52,20 @@ export class ChatGateway {
     const readStatus = await this.chatService.markMessageAsRead(data.messageId, data.profileId);
     this.server.emit('messageRead', readStatus);
     return readStatus;
+  }
+
+  // Marcar conversa como lida quando o usuário abre o chat
+  @SubscribeMessage('openChat')
+  async handleOpenChat(
+    @MessageBody() data: { conversationId: string; profileId: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    const readResult = await this.chatService.markConversationAsRead(
+      data.conversationId,
+      data.profileId,
+    );
+    client.emit('conversationRead', readResult);
+    return readResult;
   }
 
   // Editar mensagem

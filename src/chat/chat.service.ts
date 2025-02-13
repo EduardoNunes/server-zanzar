@@ -218,6 +218,17 @@ export class ChatService {
                   },
                 },
               },
+              _count: {
+                select: {
+                  messages: {
+                    where: {
+                      readStatus: {
+                        none: { profileId },
+                      },
+                    },
+                  },
+                },
+              },
             },
           },
         },
@@ -265,6 +276,7 @@ export class ChatService {
             name: conversation.name || null,
             isGroup: conversation.isGroup,
             createdAt: conversation.createdAt,
+            messagesCount: conversation._count.messages,
             participants,
           };
         }),
@@ -418,21 +430,26 @@ export class ChatService {
       const unreadMessages = await this.prisma.chatMessages.findMany({
         where: {
           conversationId,
+          profileId: { not: profileId },
           readStatus: {
             none: {
               profileId,
-              readAt: {
-                not: null,
-              },
             },
           },
         },
       });
 
       // Mark each unread message as read
-      const readPromises = unreadMessages.map((message) =>
-        this.markMessageAsRead(message.id, profileId),
-      );
+      const readPromises = unreadMessages.map(async (message) => {
+        // Create a read status entry for this message and profile
+        await this.prisma.chatReadStatus.create({
+          data: {
+            messageId: message.id,
+            profileId,
+            readAt: new Date(),
+          },
+        });
+      });
 
       await Promise.all(readPromises);
 
@@ -492,5 +509,35 @@ export class ChatService {
         error: 'Bad Request',
       });
     }
+  }
+
+  async getMyUnreadMessages(profileId: string) {
+    return this.prisma.chatConversation.findMany({
+      where: {
+        messages: {
+          some: {
+            readStatus: {
+              none: { profileId },
+            },
+          },
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+        isGroup: true,
+        _count: {
+          select: {
+            messages: {
+              where: {
+                readStatus: {
+                  none: { profileId },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
   }
 }
