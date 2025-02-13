@@ -48,6 +48,9 @@ export class AuthService {
     // Fetch unread messages per conversation
     const unreadChatMessages = await this.prisma.chatConversation.count({
       where: {
+        participants: {
+          some: { profileId: user.profile.id } // Garante que o usuário faz parte da conversa
+        },
         messages: {
           some: {
             readStatus: {
@@ -57,7 +60,7 @@ export class AuthService {
         }
       }
     });
-
+    
     const payload = {
       sub: user.id,
       email: user.email,
