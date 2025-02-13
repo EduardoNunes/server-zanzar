@@ -430,7 +430,6 @@ export class ChatService {
       const unreadMessages = await this.prisma.chatMessages.findMany({
         where: {
           conversationId,
-          profileId: { not: profileId },
           readStatus: {
             none: {
               profileId,
