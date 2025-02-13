@@ -42,7 +42,7 @@ export class ChatGateway {
   async handleMarkAsRead(
     @MessageBody() data: { messageId: string; profileId: string },
   ) {
-    const readStatus = await this.chatService.markMessageAsRead(data);
+    const readStatus = await this.chatService.markMessageAsRead(data.messageId, data.profileId);
     this.server.emit('messageRead', readStatus);
     return readStatus;
   }

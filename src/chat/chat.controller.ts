@@ -63,4 +63,23 @@ export class ChatController {
   ) {
     return this.chatService.createMessage(data);
   }
+
+  @Post('mark-message-read')
+  async markMessageAsRead(
+    @Body() data: { messageId: string; profileId: string }
+  ) {
+    return this.chatService.markMessageAsRead(data.messageId, data.profileId);
+  }
+
+  @Post('mark-conversation-read')
+  async markConversationAsRead(
+    @Body() data: { conversationId: string; profileId: string }
+  ) {
+    return this.chatService.markConversationAsRead(data.conversationId, data.profileId);
+  }
+
+  @Get('unread-messages-count')
+  async getUnreadMessagesCount(@Query('profileId') profileId: string) {
+    return this.chatService.getUnreadMessagesCount(profileId);
+  }
 }

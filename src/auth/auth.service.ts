@@ -8,7 +8,7 @@ export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
-  ) {}
+  ) { }
 
   async login(email: string, password: string) {
     const user = await this.prisma.user.findUnique({
@@ -37,17 +37,30 @@ export class AuthService {
       data: { lastSignInAt: new Date() },
     });
 
-    // Count unread notifications
     const unreadNotificationsCount = await this.prisma.notification.count({
       where: {
         receiverId: user.profile.id,
         isRead: false,
       },
+      take: 9,
+    });
+
+    // Fetch unread messages per conversation
+    const unreadChatMessages = await this.prisma.chatConversation.count({
+      where: {
+        messages: {
+          some: {
+            readStatus: {
+              none: { profileId: user.profile.id }
+            }
+          }
+        }
+      }
     });
 
     const payload = {
-      email: user.email,
       sub: user.id,
+      email: user.email,
       role: user.profile.role,
     };
 
@@ -61,6 +74,7 @@ export class AuthService {
       role: user.profile.role || 'user',
       userName: user.profile.username || 'user',
       unreadNotificationsCount,
+      unreadChatMessages,
     };
   }
 }

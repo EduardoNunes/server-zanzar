@@ -14,7 +14,7 @@ export class ChatService {
     process.env.SUPABASE_KEY,
   );
 
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   async getUsers(userName: string) {
     const formattedUsername = userName
@@ -366,18 +366,88 @@ export class ChatService {
     });
   }
 
-  // Marcar mensagem como lida
-  async markMessageAsRead(data: { messageId: string; profileId: string }) {
-    return this.prisma.chatReadStatus.upsert({
-      where: {
-        messageId_profileId: {
-          messageId: data.messageId,
-          profileId: data.profileId,
+  async markMessageAsRead(messageId: string, profileId: string) {
+    try {
+      // Check if the message exists
+      const message = await this.prisma.chatMessages.findUnique({
+        where: { id: messageId },
+      });
+
+      if (!message) {
+        throw new HttpException('Mensagem não encontrada', HttpStatus.NOT_FOUND);
+      }
+
+      // Check if the profile exists
+      const profile = await this.prisma.profiles.findUnique({
+        where: { id: profileId },
+      });
+
+      if (!profile) {
+        throw new HttpException('Perfil não encontrado', HttpStatus.NOT_FOUND);
+      }
+
+      // Create or update read status
+      return this.prisma.chatReadStatus.upsert({
+        where: {
+          messageId_profileId: {
+            messageId,
+            profileId,
+          },
         },
-      },
-      update: { readAt: new Date() },
-      create: { messageId: data.messageId, profileId: data.profileId },
-    });
+        update: {
+          readAt: new Date(),
+        },
+        create: {
+          messageId,
+          profileId,
+          readAt: new Date(),
+        },
+      });
+    } catch (error) {
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        message: error.message || 'Erro ao marcar mensagem como lida',
+        error: 'Bad Request',
+      });
+    }
+  }
+
+  async markConversationAsRead(conversationId: string, profileId: string) {
+    try {
+      // Get all unread messages in the conversation for this profile
+      const unreadMessages = await this.prisma.chatMessages.findMany({
+        where: {
+          conversationId,
+          readStatus: {
+            none: {
+              profileId,
+              readAt: {
+                not: null,
+              },
+            },
+          },
+        },
+      });
+
+      // Mark each unread message as read
+      const readPromises = unreadMessages.map((message) =>
+        this.markMessageAsRead(message.id, profileId),
+      );
+
+      await Promise.all(readPromises);
+
+      return {
+        conversationId,
+        profileId,
+        messagesMarkedAsRead: unreadMessages.length,
+      };
+    } catch (error) {
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        message: error.message || 'Erro ao marcar conversa como lida',
+        error: 'Bad Request',
+      });
+    }
   }
 
   // Editar mensagem
@@ -393,5 +463,34 @@ export class ChatService {
     return this.prisma.chatMessages.delete({
       where: { id: messageId },
     });
+  }
+
+  async getUnreadMessagesCount(profileId: string) {
+    try {
+      // Count unread messages where the profile is not the sender and hasn't read the message
+      const unreadCount = await this.prisma.chatMessages.count({
+        where: {
+          NOT: {
+            profileId,
+          },
+          readStatus: {
+            none: {
+              profileId,
+              readAt: {
+                not: null,
+              },
+            },
+          },
+        },
+      });
+
+      return { count: unreadCount };
+    } catch (error) {
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        message: error.message || 'Erro ao buscar mensagens não lidas',
+        error: 'Bad Request',
+      });
+    }
   }
 }
