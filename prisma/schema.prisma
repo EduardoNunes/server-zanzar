@@ -122,10 +122,10 @@ model AdClicks {
 model Advertisements {
   id            String     @id @default(uuid())
   title         String
-  description   String
-  mediaUrl      String
-  mediaType     String
-  linkUrl       String
+  description   String?
+  mediaUrl      String?    // Torna o campo opcional
+  mediaType     String?    // Torna o campo opcional
+  linkUrl       String?
   startDate     DateTime
   endDate       DateTime
   dailyLimit    Int?

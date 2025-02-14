@@ -40,16 +40,9 @@ export class AdvertisementsManagementController {
   @UseInterceptors(FileInterceptor('file'))
   async createAdvertisement(
     @Body() data: any,
-    @UploadedFile() file: Express.Multer.File
+    @UploadedFile() file: Express.Multer.File | undefined,
   ) {
     try {
-      if (!file) {
-        throw new HttpException(
-          'No file uploaded',
-          HttpStatus.BAD_REQUEST
-        );
-      }
-
       const ad = await this.advertisementsService.createAdvertisementWithMedia(file, data);
       return ad;
     } catch (error) {
@@ -74,13 +67,6 @@ export class AdvertisementsManagementController {
     @UploadedFile() file: Express.Multer.File
   ) {
     try {
-      if (!file) {
-        throw new HttpException(
-          'No file uploaded',
-          HttpStatus.BAD_REQUEST
-        );
-      }
-
       const ad = await this.advertisementsService.updateAdvertisementWithMedia(id, file, data);
       return ad;
     } catch (error) {
@@ -99,7 +85,7 @@ export class AdvertisementsManagementController {
 
   @Delete(':id')
   async deleteAdvertisement(@Param('id') id: string) {
-    try {      
+    try {
       await this.advertisementsService.deleteAdvertisement(id);
       return { message: 'Advertisement deleted successfully' };
     } catch (error) {

@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "Advertisements" ALTER COLUMN "description" DROP NOT NULL,
+ALTER COLUMN "mediaUrl" DROP NOT NULL,
+ALTER COLUMN "mediaType" DROP NOT NULL,
+ALTER COLUMN "linkUrl" DROP NOT NULL;
