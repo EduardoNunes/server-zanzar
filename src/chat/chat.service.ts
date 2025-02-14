@@ -309,6 +309,7 @@ export class ChatService {
         include: {
           profile: {
             select: {
+              id: true,
               username: true,
               avatarUrl: true,
             },
@@ -369,13 +370,56 @@ export class ChatService {
     profileId: string;
     content: string;
   }) {
-    return this.prisma.chatMessages.create({
+    // Busca o perfil do usuário que está enviando a mensagem
+    const profile = await this.prisma.profiles.findUnique({
+      where: { id: data.profileId },
+      select: {
+        avatarUrl: true,
+        username: true,
+      },
+    });
+  
+    if (!profile) {
+      throw new Error("Perfil não encontrado");
+    }
+  
+    // Gerar URL assinada para o avatar, se existir.
+    if (profile.avatarUrl) {
+      const bucketPath = profile.avatarUrl.replace(
+        'https://livpgjkudsvjcvapfcjq.supabase.co/storage/v1/object/public/',
+        '',
+      );
+
+      const { data: signedUrlData, error } = await this.supabase.storage
+        .from('zanzar-images')
+        .createSignedUrl(bucketPath, 3600);
+
+      if (error) {
+        throw new BadRequestException(
+          `Erro ao gerar URL assinada: ${error.message}`,
+        );
+      }
+
+      profile.avatarUrl = signedUrlData?.signedUrl;
+    }
+  
+    // Cria a mensagem no banco de dados
+    const message = await this.prisma.chatMessages.create({
       data: {
         content: data.content,
         conversationId: data.conversationId,
         profileId: data.profileId,
       },
     });
+  
+    // Retorna a mensagem com os dados do perfil incluídos
+    return {
+      ...message,
+      profile: {
+        avatarUrl: profile.avatarUrl,
+        username: profile.username,
+      },
+    };
   }
 
   async markMessageAsRead(messageId: string, profileId: string) {
