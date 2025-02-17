@@ -18,7 +18,7 @@ export class PostsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notificationsGateway: NotificationsGateway,
-  ) {}
+  ) { }
 
   async createPostWithMedia(
     file: Express.Multer.File,
@@ -27,6 +27,17 @@ export class PostsService {
     caption: string,
   ) {
     try {
+      //formatos permitidos
+      const allowedImageTypes = ["image/jpeg", "image/jpg"];
+      const allowedVideoTypes = ["video/mp4"];
+
+      if (!allowedImageTypes.includes(file.mimetype) && !allowedVideoTypes.includes(file.mimetype)) {
+        throw new HttpException(
+          'Formato de arquivo não suportado. Apenas JPG, JPEG e MP4 são permitidos.',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
       const profile = await this.prisma.profiles.findUnique({
         where: { id: profileId },
       });
@@ -78,8 +89,8 @@ export class PostsService {
       // Increment totalPosts for the profile
       await this.prisma.profiles.update({
         where: { id: profileId },
-        data: { 
-          totalPosts: { increment: 1 } 
+        data: {
+          totalPosts: { increment: 1 }
         },
       });
 
