@@ -16,6 +16,8 @@ import { UsersManagementModule } from './users-management/users-management.modul
 import { ActivityManagementModule } from './activity-management/activity-management.module';
 import { AdvertisementsManagementModule } from './advertisements-management/advertisements-management.module';
 import { AdModalModule } from './ad-modal/ad-modal.module';
+import { InviteModule } from './invite/invite.module';
+import { InviteManagementModule } from './invite-management/invite-management.module';
 
 @Module({
   imports: [
@@ -32,6 +34,8 @@ import { AdModalModule } from './ad-modal/ad-modal.module';
     ActivityManagementModule,
     AdvertisementsManagementModule,
     AdModalModule,
+    InviteModule,
+    InviteManagementModule,
   ],
   controllers: [AppController, ChatController],
   providers: [AppService, ChatService],
