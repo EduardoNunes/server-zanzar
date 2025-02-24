@@ -77,9 +77,14 @@ model Profiles {
   totalPosts       Int                @default(0)
 
   receivedNotifications Notification[] @relation("ProfileNotifications")
+  sentNotifications Notification[]     @relation("SenderNotifications")
 
-  sentNotifications Notification[] @relation("SenderNotifications")
+  invitesSent      Invite[]            @relation("Inviter")
+
+  invites          Int                 @default(0) // Nova coluna adicionada
 }
+
+
 
 model Comments {
   id        String   @id @default(uuid())
@@ -203,3 +208,15 @@ model Notification {
 
   @@map("notifications")
 }
+
+model Invite {
+  id         String   @id @default(uuid())
+  inviterId  String
+  email      String   @unique
+  status     String   @default("pending") // pending, accepted, expired
+  sentAt     DateTime @default(now())
+  acceptedAt DateTime?
+
+  inviter    Profiles @relation("Inviter", fields: [inviterId], references: [id])
+}
+
