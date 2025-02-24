@@ -79,6 +79,11 @@ export class RegisterService {
         },
       });
 
+      const inviteAccepted = await this.prisma.invite.update({
+        where: { id: existInvite.id },
+        data: { status: "accepted" },
+      });
+
       return {
         message: 'User registered successfully',
         email: newUser.email,
