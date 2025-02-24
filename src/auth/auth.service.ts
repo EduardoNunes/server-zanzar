@@ -17,7 +17,14 @@ export class AuthService {
         id: true,
         email: true,
         password: true,
-        profile: { select: { id: true, role: true, username: true } },
+        profile: {
+          select: {
+            id: true,
+            role: true,
+            username: true,
+            invites: true
+          }
+        },
       },
     });
 
@@ -60,7 +67,7 @@ export class AuthService {
         }
       }
     });
-    
+
     const payload = {
       sub: user.id,
       email: user.email,
@@ -78,6 +85,7 @@ export class AuthService {
       userName: user.profile.username || 'user',
       unreadNotificationsCount,
       unreadChatMessages,
+      invites: user.profile.invites,
     };
   }
 }

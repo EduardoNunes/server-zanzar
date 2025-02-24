@@ -52,8 +52,6 @@ export class InviteService {
 
   // Listar convites enviados pelo usuário
   async getInvitesByUser(userId: string) {
-    console.log("USERID", userId);
-
     const userProfile = await this.prisma.profiles.findUnique({
       where: { userId: userId },
     });
@@ -62,10 +60,15 @@ export class InviteService {
       throw new Error('User profile not found');
     }
 
-    return this.prisma.invite.findMany({
+    const invites = await this.prisma.invite.findMany({
       where: { inviterId: userProfile.id },
       orderBy: { sentAt: 'desc' },
     });
+
+    return {
+      invites,
+      invitesAvaliable: userProfile.invites
+    };
   }
 
 
