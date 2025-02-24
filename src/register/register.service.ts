@@ -6,8 +6,8 @@ import {
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import * as Yup from 'yup';
-import { PrismaService } from '../prisma/prisma.service';
 import { registerValidation } from '../common/validations/register.validation';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class RegisterService {
@@ -32,6 +32,18 @@ export class RegisterService {
       if (existEmail) {
         throw new HttpException(
           'Este E-mail já está cadastrado',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      //AQUI É A VALIDAÇÃO DE CONVITE.
+      const existInvite = await this.prisma.invite.findFirst({
+        where: { email },
+      });
+
+      if (!existInvite) {
+        throw new HttpException(
+          'Este email não foi convidado, busque um anfitrião.',
           HttpStatus.BAD_REQUEST,
         );
       }
