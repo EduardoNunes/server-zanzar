@@ -17,6 +17,9 @@ model Posts {
   likes     Likes[]
   comments  Comments[]
   profile   Profiles   @relation(fields: [profileId], references: [id])
+  
+  category  String     @default("Padrão") // Nova coluna com valor padrão
+  order     Int        // Nova coluna que não pode ser nula
 }
 
 model Likes {
