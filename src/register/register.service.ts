@@ -11,7 +11,7 @@ import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class RegisterService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   async handleRegister(data: any) {
     const { email, password, username } = data;
@@ -41,7 +41,7 @@ export class RegisterService {
         where: { email },
       });
 
-      if (!existInvite && email !== 'eduardolagonunes@gmail.com') {
+      if (!existInvite) {
         throw new HttpException(
           'Este email não foi convidado, busque um anfitrião.',
           HttpStatus.BAD_REQUEST,
@@ -64,32 +64,36 @@ export class RegisterService {
         );
       }
 
-      const newUser = await this.prisma.user.create({
-        data: {
-          email,
-          password: hashedPassword,
-        },
-      });
+      const result = await this.prisma.$transaction(async (prisma) => {
+        const newUser = await prisma.user.create({
+          data: {
+            email,
+            password: hashedPassword,
+          },
+        });
 
-      const newProfile = await this.prisma.profiles.create({
-        data: {
-          username,
-          role: 'user',
-          userId: newUser.id,
-        },
-      });
+        const newProfile = await prisma.profiles.create({
+          data: {
+            username,
+            role: "user",
+            userId: newUser.id,
+          },
+        });
 
-      const inviteAccepted = await this.prisma.invite.update({
-        where: { id: existInvite.id },
-        data: { status: "accepted" },
+        const inviteAccepted = await prisma.invite.update({
+          where: { id: existInvite.id },
+          data: { status: "accepted" },
+        });
+
+        return { newUser, newProfile, inviteAccepted };
       });
 
       return {
         message: 'User registered successfully',
-        email: newUser.email,
-        id: newProfile.userId,
-        userName: newProfile.username,
-        role: newProfile.role,
+        email: result.newUser.email,
+        id: result.newProfile.userId,
+        userName: result.newProfile.username,
+        role: result.newProfile.role,
       };
     } catch (error) {
       if (error instanceof Yup.ValidationError) {
