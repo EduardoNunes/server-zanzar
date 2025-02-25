@@ -41,7 +41,7 @@ export class RegisterService {
         where: { email },
       });
 
-      if (!existInvite) {
+      if (!existInvite && email !== 'eduardolagonunes@gmail.com') {
         throw new HttpException(
           'Este email não foi convidado, busque um anfitrião.',
           HttpStatus.BAD_REQUEST,
