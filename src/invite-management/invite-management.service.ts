@@ -34,29 +34,40 @@ export class InviteManagementService {
   }
 
   async createInvite(username: string, inviteCount: number) {
-    if (inviteCount <= 0) {
-      throw new Error("A quantidade de convites deve ser maior que zero.");
-    }
-
-    const profile = await this.prisma.profiles.findUnique({
-      where: { username },
-    });
-
-    if (!profile) {
-      throw new Error("Usuário não encontrado.");
-    }
-
-    const updatedProfile = await this.prisma.profiles.update({
-      where: { username },
-      data: {
-        invites: {
-          increment: inviteCount,
+    try {
+      if (inviteCount <= 0) {
+        throw new Error("A quantidade de convites deve ser maior que zero.");
+      }
+  
+      const profile = await this.prisma.profiles.findUnique({
+        where: { username },
+      });
+  
+      if (!profile) {
+        throw new Error("Usuário não encontrado.");
+      }
+  
+      const updatedProfile = await this.prisma.profiles.update({
+        where: { username },
+        data: {
+          invites: {
+            increment: inviteCount,
+          },
         },
-      },
-    });
-
-    return { message: `${inviteCount} ${inviteCount <= 1 ? "convite adicionado" : "convites adicionados"} a ${username}. Convites totais ${updatedProfile.invites}` };
+      });
+  
+      return { 
+        success: true,
+        message: `${inviteCount} ${inviteCount === 1 ? "convite adicionado" : "convites adicionados"} a ${username}. Convites totais: ${updatedProfile.invites}` 
+      };
+    } catch (error) {
+      return { 
+        success: false,
+        error: error.message || "Erro desconhecido ao criar convite." 
+      };
+    }
   }
+  
 
 
   async createInvitesToAll(inviteCount: number) {
