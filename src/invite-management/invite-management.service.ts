@@ -34,13 +34,14 @@ export class InviteManagementService {
   }
 
   async createInvite(username: string, inviteCount: number) {
+    const emailLowerCase = username.toLowerCase();
     try {
       if (inviteCount <= 0) {
         throw new Error("A quantidade de convites deve ser maior que zero.");
       }
   
       const profile = await this.prisma.profiles.findUnique({
-        where: { username },
+        where: { username: emailLowerCase },
       });
   
       if (!profile) {
@@ -48,7 +49,7 @@ export class InviteManagementService {
       }
   
       const updatedProfile = await this.prisma.profiles.update({
-        where: { username },
+        where: { username: emailLowerCase },
         data: {
           invites: {
             increment: inviteCount,
@@ -58,7 +59,7 @@ export class InviteManagementService {
   
       return { 
         success: true,
-        message: `${inviteCount} ${inviteCount === 1 ? "convite adicionado" : "convites adicionados"} a ${username}. Convites totais: ${updatedProfile.invites}` 
+        message: `${inviteCount} ${inviteCount === 1 ? "convite adicionado" : "convites adicionados"} a ${emailLowerCase}. Convites totais: ${updatedProfile.invites}` 
       };
     } catch (error) {
       return { 

@@ -7,7 +7,7 @@ export class InviteService {
   constructor(private prisma: PrismaService) { }
 
   async createInvite(inviterId: string, email: string) {
-
+    const emailLowerCase = email.toLowerCase();
     const profile = await this.prisma.profiles.findFirst({
       where: { userId: inviterId },
       select: { id: true, invites: true },
@@ -21,13 +21,13 @@ export class InviteService {
       throw new BadRequestException('Você não tem convites.');
     }
 
-    const existUser = await this.prisma.user.findFirst({ where: { email } });
+    const existUser = await this.prisma.user.findFirst({ where: { email: emailLowerCase } });
 
     if (existUser) {
       throw new BadRequestException('Este usuário já é um Zanzeiro.');
     }
 
-    const existInvite = await this.prisma.invite.findFirst({ where: { email } });
+    const existInvite = await this.prisma.invite.findFirst({ where: { email: emailLowerCase } });
 
     if (existInvite) {
       throw new BadRequestException('Este email já foi convidado.');
@@ -41,7 +41,7 @@ export class InviteService {
       this.prisma.invite.create({
         data: {
           inviterId: profile.id,
-          email,
+          email: emailLowerCase,
         },
       }),
     ]);
