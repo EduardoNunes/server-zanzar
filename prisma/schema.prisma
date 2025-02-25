@@ -8,18 +8,20 @@ datasource db {
 }
 
 model Posts {
-  id        String     @id @default(uuid())
-  profileId String
-  mediaUrl  String
-  caption   String?
-  isPublic  Boolean    @default(false)
-  createdAt DateTime   @default(now())
-  likes     Likes[]
-  comments  Comments[]
-  profile   Profiles   @relation(fields: [profileId], references: [id])
-  
-  category  String     @default("Padrão") // Nova coluna com valor padrão
-  order     Int        // Nova coluna que não pode ser nula
+  id         String     @id @default(uuid())
+  profileId  String
+  mediaUrl   String
+  caption    String?
+  isPublic   Boolean    @default(false)
+  createdAt  DateTime   @default(now())
+  likes      Likes[]
+  comments   Comments[]
+  profile    Profiles   @relation(fields: [profileId], references: [id])
+
+  categoryId String?
+  category   Categories? @relation(fields: [categoryId], references: [id], onDelete: SetNull) // Associação com Categories
+
+  order      Int        // Nova coluna que não pode ser nula
 }
 
 model Likes {
@@ -64,7 +66,7 @@ model Profiles {
   lastSignInAt     DateTime?
   posts            Posts[]
   likes            Likes[]
-  comments         Comments[]
+  comments        Comments[]
   followers        Followers[]        @relation("FollowerRelation")
   following        Followers[]        @relation("FollowingRelation")
   sentMessages     DirectMessages[]   @relation("Sender")
@@ -83,11 +85,10 @@ model Profiles {
   sentNotifications Notification[]     @relation("SenderNotifications")
 
   invitesSent      Invite[]            @relation("Inviter")
+  invites          Int                 @default(0)
 
-  invites          Int                 @default(0) // Nova coluna adicionada
+  categories       Categories[]        // Relação 1 para N com Categories
 }
-
-
 
 model Comments {
   id        String   @id @default(uuid())
@@ -223,3 +224,12 @@ model Invite {
   inviter    Profiles @relation("Inviter", fields: [inviterId], references: [id])
 }
 
+model Categories {
+  id         String   @id @default(uuid())
+  profileId  String
+  categories String
+  profile    Profiles @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  posts      Posts[]  // Relação 1 para N com Posts
+
+  @@index([profileId]) // Índice para otimizar buscas por profileId
+}
