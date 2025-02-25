@@ -25,6 +25,8 @@ export class PostsService {
     filePath: string,
     profileId: string,
     caption: string,
+    selectedCategory: string,
+    order: number,
   ) {
     try {
       //formatos permitidos
@@ -37,6 +39,13 @@ export class PostsService {
           HttpStatus.BAD_REQUEST,
         );
       }
+
+/*       if (!order) {
+        throw new HttpException(
+          'É necessário escolher uma ordem.',
+          HttpStatus.NOT_FOUND,
+        );
+      } */
 
       const profile = await this.prisma.profiles.findUnique({
         where: { id: profileId },
@@ -83,6 +92,8 @@ export class PostsService {
           mediaUrl,
           caption,
           isPublic: true,
+          categoryId: selectedCategory,
+          order: 1,
         },
       });
 
@@ -550,6 +561,41 @@ export class PostsService {
       console.error(`Erro ao buscar o post com ID ${postId}:`, error);
       throw new HttpException(
         'Erro ao buscar o post. Por favor, tente novamente.',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  async loadCategories(profileId: string) {
+    try {
+      const categories = await this.prisma.categories.findMany({
+        where: { profileId },
+      });
+
+      return categories;
+    } catch (error) {
+      console.error(`Erro ao carregar categorias:`, error);
+      throw new HttpException(
+        'Erro ao carregar categorias. Por favor, tente novamente.',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  async addCategory(newCategory: string, profileId: string) {
+    try {
+      const category = await this.prisma.categories.create({
+        data: {
+          profileId,
+          categories: newCategory,
+        },
+      });
+
+      return category;
+    } catch (error) {
+      console.error(`Erro ao criar categoria:`, error);
+      throw new HttpException(
+        'Erro ao criar categoria. Por favor, tente novamente.',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }

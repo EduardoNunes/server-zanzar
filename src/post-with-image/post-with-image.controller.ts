@@ -9,13 +9,16 @@ import {
   Headers,
   Get,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { PostsService } from './post-with-image.service';
+import { JwtAuthGuard } from 'src/auth/guard/JwtAuthGuard';
 
+@UseGuards(JwtAuthGuard)
 @Controller('posts')
 export class PostsController {
-  constructor(private readonly postsService: PostsService) {}
+  constructor(private readonly postsService: PostsService) { }
 
   @Post('upload-and-create')
   @UseInterceptors(FileInterceptor('file'))
@@ -23,6 +26,8 @@ export class PostsController {
     @UploadedFile() file: Express.Multer.File,
     @Body('profileId') profileId: string,
     @Body('caption') caption: string,
+    @Body('selectedCategory') selectedCategory: string,
+    @Body('order') order: number,
     @Headers('Authorization') token: string,
   ) {
     if (!token) {
@@ -43,6 +48,8 @@ export class PostsController {
       filePath,
       profileId,
       caption,
+      selectedCategory,
+      order,
     );
   }
 
@@ -79,5 +86,25 @@ export class PostsController {
     @Query('profileId') profileId: string,
   ) {
     return this.postsService.findSinglePost(postId, profileId);
+  }
+
+  @Get('load-categories')
+  async loadCategories(
+    @Query('profileId') profileId: string,
+  ) {
+    return this.postsService.loadCategories(profileId);
+  }
+
+  @Post('category')
+  async addCategory(
+    @Body('newCategory') newCategory: string,
+    @Body('profileId') profileId: string,
+  ) {
+    console.log("CHEGOU")
+    if (!newCategory || !profileId) {
+      throw new Error('Os campos newCategory e profileId são obrigatórios.');
+    }
+
+    return this.postsService.addCategory(newCategory, profileId);
   }
 }
