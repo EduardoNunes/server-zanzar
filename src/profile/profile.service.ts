@@ -16,7 +16,7 @@ export class ProfileService {
     process.env.SUPABASE_KEY,
   );
 
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   async getProfile(username: string, token: string) {
     try {
@@ -95,9 +95,9 @@ export class ProfileService {
   }
 
   async getPosts(
-    username: string, 
-    page: number = 1, 
-    limit: number = 2, 
+    username: string,
+    page: number = 1,
+    limit: number = 2,
     loggedInProfileId?: string
   ) {
     try {
@@ -123,6 +123,11 @@ export class ProfileService {
           mediaUrl: true,
           caption: true,
           createdAt: true,
+          category: {
+            select: {
+              categories: true,
+            },
+          },
           likes: {
             select: {
               id: true,
@@ -181,7 +186,7 @@ export class ProfileService {
             }
 
             // Check if the logged-in profile has liked the post
-            const likedByLoggedInUser = loggedInProfileId 
+            const likedByLoggedInUser = loggedInProfileId
               ? post.likes.some((like) => like.profile.id === loggedInProfileId)
               : false;
 
