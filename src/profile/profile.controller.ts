@@ -61,4 +61,14 @@ export class ProfileController {
   ) {
     return this.profileService.followProfile(profileId, currentProfileId);
   }
+
+  @Get('posts-by-category')
+  async getPostsByCategory(
+    @Query('categoryId') categoryId: string,
+    @Query('page') page: number,
+    @Query('limit') limit: number,
+    @Query('profileId') profileId: string,
+  ) {
+    return this.profileService.getPostsByCategory(categoryId, profileId, page, limit);
+  }
 }

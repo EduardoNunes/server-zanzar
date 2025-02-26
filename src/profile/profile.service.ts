@@ -16,7 +16,7 @@ export class ProfileService {
     process.env.SUPABASE_KEY,
   );
 
-  constructor(private prisma: PrismaService) { }
+  constructor(private prisma: PrismaService) {}
 
   async getProfile(username: string, token: string) {
     try {
@@ -97,8 +97,8 @@ export class ProfileService {
   async getPosts(
     username: string,
     page: number = 1,
-    limit: number = 2,
-    loggedInProfileId?: string
+    limit: number = 3,
+    loggedInProfileId?: string,
   ) {
     try {
       const profile = await this.prisma.profiles.findUnique({
@@ -109,47 +109,79 @@ export class ProfileService {
         throw new HttpException('Perfil não encontrado.', HttpStatus.NOT_FOUND);
       }
 
-      const skip = (page - 1) * limit;
+      const skipCategories = (page - 1) * limit;
 
-      const posts = await this.prisma.posts.findMany({
+      // Get unique categories for the profile
+      const uniqueCategories = await this.prisma.posts.findMany({
+        where: { profileId: profile.id },
+        distinct: ['categoryId'],
         orderBy: {
           createdAt: 'desc',
         },
-        skip,
-        take: Number(limit),
-        where: { profileId: profile.id },
         select: {
-          id: true,
-          mediaUrl: true,
-          caption: true,
-          createdAt: true,
           category: {
             select: {
               categories: true,
             },
           },
-          likes: {
+        },
+        skip: skipCategories,
+        take: limit,
+      });
+
+      //Fetch the first 3 posts of each category.
+      const postsByCategory = await Promise.all(
+        uniqueCategories.map(async (cat) => {
+          const category = cat.category.categories;
+
+          const posts = await this.prisma.posts.findMany({
+            where: {
+              profileId: profile.id,
+              category: { categories: category },
+            },
+            orderBy: {
+              createdAt: 'desc',
+            },
+            take: 3,
             select: {
               id: true,
-              profile: {
+              mediaUrl: true,
+              caption: true,
+              createdAt: true,
+              category: {
                 select: {
                   id: true,
-                  username: true,
+                  categories: true,
+                },
+              },
+              likes: {
+                select: {
+                  id: true,
+                  profile: {
+                    select: {
+                      id: true,
+                      username: true,
+                    },
+                  },
+                },
+              },
+              _count: {
+                select: {
+                  likes: true,
+                  comments: true,
                 },
               },
             },
-          },
-          _count: {
-            select: {
-              likes: true,
-              comments: true,
-            },
-          },
-        },
-      });
+          });
+          return posts;
+        }),
+      );
+
+      //Flatten the array of arrays
+      const allPosts = postsByCategory.flat();
 
       const postsWithSignedUrls = await Promise.all(
-        posts.map(async (post) => {
+        allPosts.map(async (post) => {
           try {
             if (!post.mediaUrl) {
               console.warn(`Post ${post.id} não possui mediaUrl. Ignorando...`);
@@ -196,6 +228,7 @@ export class ProfileService {
               likedByLoggedInUser,
               likeCount: post._count.likes,
               commentCount: post._count.comments,
+              category: post.category,
             };
           } catch (error) {
             console.error(`Erro ao processar o post ${post.id}:`, error);
@@ -205,6 +238,7 @@ export class ProfileService {
               likedByLoggedInUser: false,
               likeCount: post._count.likes,
               commentCount: post._count.comments,
+              category: post.category,
             };
           }
         }),
@@ -215,6 +249,120 @@ export class ProfileService {
       console.error('Erro ao buscar os posts:', error);
       throw new HttpException(
         'Erro ao buscar os posts. Por favor, tente novamente.',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  async getPostsByCategory(
+    categoryId: string,
+    profileId: string,
+    page: number = 2,
+    limit: number = 3,
+  ) {
+    try {
+      const skip = (page - 1) * limit;
+
+      const posts = await this.prisma.posts.findMany({
+        where: {
+          categoryId,
+          profileId,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        skip,
+        take: limit,
+        select: {
+          id: true,
+          mediaUrl: true,
+          caption: true,
+          createdAt: true,
+          category: {
+            select: {
+              categories: true,
+            },
+          },
+          likes: {
+            select: {
+              id: true,
+              profile: {
+                select: {
+                  id: true,
+                  username: true,
+                },
+              },
+            },
+          },
+          _count: {
+            select: {
+              likes: true,
+              comments: true,
+            },
+          },
+        },
+      });
+
+      const postsWithSignedUrls = await Promise.all(
+        posts.map(async (post) => {
+          try {
+            if (!post.mediaUrl) {
+              console.warn(`Post ${post.id} não possui mediaUrl. Ignorando...`);
+              return {
+                ...post,
+                mediaUrl: null,
+                likeCount: post._count.likes,
+                commentCount: post._count.comments,
+              };
+            }
+
+            const bucketPath = post.mediaUrl.replace(
+              'https://livpgjkudsvjcvapfcjq.supabase.co/storage/v1/object/public/zanzar-images/',
+              '',
+            );
+
+            const { data, error } = await this.supabase.storage
+              .from('zanzar-images')
+              .createSignedUrl(bucketPath, 3600);
+
+            if (error || !data?.signedUrl) {
+              console.error(
+                `Erro ao gerar URL assinada para o post ${post.id}:`,
+                error,
+              );
+              return {
+                ...post,
+                mediaUrl: null,
+                likeCount: post._count.likes,
+                commentCount: post._count.comments,
+              };
+            }
+
+            return {
+              ...post,
+              mediaUrl: data.signedUrl,
+              likeCount: post._count.likes,
+              commentCount: post._count.comments,
+              category: post.category,
+            };
+          } catch (error) {
+            console.error(`Erro ao processar o post ${post.id}:`, error);
+            return {
+              ...post,
+              mediaUrl: null,
+              likeCount: post._count.likes,
+              commentCount: post._count.comments,
+              category: post.category,
+            };
+          }
+        }),
+      );
+
+      return postsWithSignedUrls;
+    } catch (error) {
+      console.error('Erro ao buscar posts paginados:', error);
+      throw new HttpException(
+        'Erro ao buscar os posts. Tente novamente.',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
