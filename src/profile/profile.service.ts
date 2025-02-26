@@ -97,7 +97,7 @@ export class ProfileService {
   async getPosts(
     username: string,
     page: number = 1,
-    limit: number = 3,
+    limit: number = 4,
     loggedInProfileId?: string,
   ) {
     try {
@@ -142,7 +142,7 @@ export class ProfileService {
             orderBy: {
               createdAt: 'desc',
             },
-            take: 3,
+            take: 4,
             select: {
               id: true,
               mediaUrl: true,
@@ -258,7 +258,7 @@ export class ProfileService {
     categoryId: string,
     profileId: string,
     page: number = 2,
-    limit: number = 3,
+    limit: number = 4,
   ) {
     try {
       const skip = (page - 1) * limit;
