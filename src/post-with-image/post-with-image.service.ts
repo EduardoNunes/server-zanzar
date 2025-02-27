@@ -18,7 +18,7 @@ export class PostsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notificationsGateway: NotificationsGateway,
-  ) { }
+  ) {}
 
   async createPostWithMedia(
     file: Express.Multer.File,
@@ -30,17 +30,20 @@ export class PostsService {
   ) {
     try {
       //formatos permitidos
-      const allowedImageTypes = ["image/jpeg", "image/jpg"];
-      const allowedVideoTypes = ["video/mp4"];
+      const allowedImageTypes = ['image/jpeg', 'image/jpg'];
+      const allowedVideoTypes = ['video/mp4'];
 
-      if (!allowedImageTypes.includes(file.mimetype) && !allowedVideoTypes.includes(file.mimetype)) {
+      if (
+        !allowedImageTypes.includes(file.mimetype) &&
+        !allowedVideoTypes.includes(file.mimetype)
+      ) {
         throw new HttpException(
           'Formato de arquivo não suportado. Apenas JPG, JPEG e MP4 são permitidos.',
           HttpStatus.BAD_REQUEST,
         );
       }
 
-/*       if (!order) {
+      /*       if (!order) {
         throw new HttpException(
           'É necessário escolher uma ordem.',
           HttpStatus.NOT_FOUND,
@@ -101,7 +104,7 @@ export class PostsService {
       await this.prisma.profiles.update({
         where: { id: profileId },
         data: {
-          totalPosts: { increment: 1 }
+          totalPosts: { increment: 1 },
         },
       });
 
@@ -141,28 +144,13 @@ export class PostsService {
           mediaUrl: true,
           caption: true,
           createdAt: true,
+          likesCount: true,
+          commentsCount: true,
           profile: {
             select: {
               id: true,
               username: true,
               avatarUrl: true,
-            },
-          },
-          likes: {
-            select: {
-              id: true,
-              profile: {
-                select: {
-                  id: true,
-                  username: true,
-                },
-              },
-            },
-          },
-          _count: {
-            select: {
-              likes: true,
-              comments: true,
             },
           },
         },
@@ -211,9 +199,12 @@ export class PostsService {
               }
             }
 
-            const likedByLoggedInUser = post.likes.some(
-              (like) => like.profile.id === profileId?.id,
-            );
+            const likedByLoggedInUser = await this.prisma.likes.findFirst({
+              where: {
+                postId: post.id,
+                profileId: profileId?.id,
+              },
+            });
 
             return {
               id: post.id,
@@ -225,9 +216,9 @@ export class PostsService {
                 username: post.profile.username,
                 ...(signedAvatarUrl && { avatarUrl: signedAvatarUrl }),
               },
-              likedByLoggedInUser,
-              likeCount: post._count.likes,
-              commentCount: post._count.comments,
+              likedByLoggedInUser: likedByLoggedInUser ? true : false,
+              likeCount: post.likesCount,
+              commentCount: post.commentsCount,
             };
           } catch (error) {
             console.error(`Erro ao processar o post ${post.id}:`, error);
@@ -241,8 +232,8 @@ export class PostsService {
                 username: post.profile.username,
               },
               likedByLoggedInUser: false,
-              likeCount: post._count.likes,
-              commentCount: post._count.comments,
+              likeCount: post.likesCount,
+              commentCount: post.commentsCount,
             };
           }
         }),
@@ -281,11 +272,24 @@ export class PostsService {
       });
 
       if (existingLike) {
-        await this.prisma.likes.delete({
-          where: {
-            id: existingLike.id,
-          },
-        });
+        await this.prisma.$transaction([
+          this.prisma.likes.delete({
+            where: {
+              id: existingLike.id,
+            },
+          }),
+
+          this.prisma.posts.update({
+            where: {
+              id: postId,
+            },
+            data: {
+              likesCount: {
+                decrement: 1,
+              },
+            },
+          }),
+        ]);
 
         return {
           message: 'Like removido com sucesso',
@@ -293,12 +297,25 @@ export class PostsService {
           profileId: profile.id,
         };
       } else {
-        const newLike = await this.prisma.likes.create({
-          data: {
-            postId,
-            profileId: profile.id,
-          },
-        });
+        const newLike = await this.prisma.$transaction([
+          this.prisma.likes.create({
+            data: {
+              postId,
+              profileId: profile.id,
+            },
+          }),
+
+          this.prisma.posts.update({
+            where: {
+              id: postId,
+            },
+            data: {
+              likesCount: {
+                increment: 1,
+              },
+            },
+          }),
+        ]);
 
         // Encontra o autor da postagem
         const post = await this.prisma.posts.findUnique({
@@ -326,9 +343,10 @@ export class PostsService {
 
         return {
           message: 'Like registrado com sucesso',
-          likeId: newLike.id,
-          postId: newLike.postId,
-          profileId: newLike.profileId,
+          likeId: newLike[0].id,
+          postId: newLike[0].postId,
+          profileId: newLike[0].profileId,
+          likesCount: newLike[1].likesCount,
         };
       }
     } catch (error) {
@@ -354,13 +372,24 @@ export class PostsService {
         );
       }
 
-      const newComment = await this.prisma.comments.create({
-        data: {
-          postId,
-          profileId: profile.id,
-          content,
-        },
-      });
+      const newComment = await this.prisma.$transaction([
+        this.prisma.comments.create({
+          data: {
+            postId,
+            profileId: profile.id,
+            content,
+          },
+        }),
+
+        this.prisma.posts.update({
+          where: { id: postId },
+          data: {
+            commentsCount: {
+              increment: 1,
+            },
+          },
+        }),
+      ]);
 
       const post = await this.prisma.posts.findUnique({
         where: { id: postId },
@@ -386,11 +415,12 @@ export class PostsService {
       }
 
       return {
-        message: 'Like registrado com sucesso',
-        content: newComment.content,
-        postId: newComment.postId,
-        profileId: newComment.profileId,
-        createdAt: newComment.createdAt,
+        message: 'Comentário registrado com sucesso',
+        content: newComment[0].content,
+        postId: newComment[0].postId,
+        profileId: newComment[0].profileId,
+        createdAt: newComment[0].createdAt,
+        commentsCount: newComment[1].commentsCount,
       };
     } catch (error) {
       throw new BadRequestException({
