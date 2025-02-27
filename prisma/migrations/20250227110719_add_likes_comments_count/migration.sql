@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Posts" ADD COLUMN     "commentsCount" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "likesCount" INTEGER NOT NULL DEFAULT 0;

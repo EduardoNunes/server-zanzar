@@ -8,21 +8,25 @@ datasource db {
 }
 
 model Posts {
-  id         String     @id @default(uuid())
-  profileId  String
-  mediaUrl   String
-  caption    String?
-  isPublic   Boolean    @default(false)
-  createdAt  DateTime   @default(now())
-  likes      Likes[]
-  comments   Comments[]
-  profile    Profiles   @relation(fields: [profileId], references: [id])
+  id           String     @id @default(uuid())
+  profileId    String
+  mediaUrl     String
+  caption      String?
+  isPublic     Boolean    @default(false)
+  createdAt    DateTime   @default(now())
+  likes        Likes[]
+  comments     Comments[]
+  profile      Profiles   @relation(fields: [profileId], references: [id])
 
-  categoryId String?
-  category   Categories? @relation(fields: [categoryId], references: [id], onDelete: SetNull) // Associação com Categories
+  categoryId   String?
+  category     Categories? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
-  order      Int        // Nova coluna que não pode ser nula
+  order        Int        // Coluna sem uso, foi colocando p/ ordenar os posts na exibição
+
+  likesCount   Int        @default(0) // Nova coluna com valor padrão 0
+  commentsCount Int       @default(0) // Nova coluna com valor padrão 0
 }
+
 
 model Likes {
   id        String   @id @default(uuid())
