@@ -11,7 +11,7 @@ import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class RegisterService {
-  constructor(private prisma: PrismaService) { }
+  constructor(private prisma: PrismaService) {}
 
   async handleRegister(data: any) {
     const { email, password, username } = data;
@@ -21,6 +21,13 @@ export class RegisterService {
         { email, password },
         { abortEarly: false },
       );
+
+      if (!/^[a-z0-9_]+$/.test(username)) {
+        throw new HttpException(
+          'Nome de usuário inválido, só é permitido letras minúsculas, números e underline',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
 
       const salt = await bcrypt.genSalt(10);
       const hashedPassword = await bcrypt.hash(password, salt);
@@ -75,14 +82,14 @@ export class RegisterService {
         const newProfile = await prisma.profiles.create({
           data: {
             username,
-            role: "user",
+            role: 'user',
             userId: newUser.id,
           },
         });
 
         const inviteAccepted = await prisma.invite.update({
           where: { id: existInvite.id },
-          data: { status: "accepted" },
+          data: { status: 'accepted' },
         });
 
         return { newUser, newProfile, inviteAccepted };
