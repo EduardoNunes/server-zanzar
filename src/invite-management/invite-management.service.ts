@@ -1,9 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
 export class InviteManagementService {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(private readonly prisma: PrismaService) {}
 
   async getAllInvites(page: number = 1) {
     const pageSize = 15;
@@ -36,18 +36,25 @@ export class InviteManagementService {
   async createInvite(username: string, inviteCount: number) {
     const emailLowerCase = username.toLowerCase();
     try {
-      if (inviteCount <= 0) {
-        throw new Error("A quantidade de convites deve ser maior que zero.");
+      if (!/^[a-z0-9_]+$/.test(username)) {
+        throw new HttpException(
+          'Nome de usuário inválido, só é permitido letras minúsculas, números e underline',
+          HttpStatus.BAD_REQUEST,
+        );
       }
-  
+
+      if (inviteCount <= 0) {
+        throw new Error('A quantidade de convites deve ser maior que zero.');
+      }
+
       const profile = await this.prisma.profiles.findUnique({
         where: { username: emailLowerCase },
       });
-  
+
       if (!profile) {
-        throw new Error("Usuário não encontrado.");
+        throw new Error('Usuário não encontrado.');
       }
-  
+
       const updatedProfile = await this.prisma.profiles.update({
         where: { username: emailLowerCase },
         data: {
@@ -56,24 +63,22 @@ export class InviteManagementService {
           },
         },
       });
-  
-      return { 
+
+      return {
         success: true,
-        message: `${inviteCount} ${inviteCount === 1 ? "convite adicionado" : "convites adicionados"} a ${emailLowerCase}. Convites totais: ${updatedProfile.invites}` 
+        message: `${inviteCount} ${inviteCount === 1 ? 'convite adicionado' : 'convites adicionados'} a ${emailLowerCase}. Convites totais: ${updatedProfile.invites}`,
       };
     } catch (error) {
-      return { 
-        success: false,
-        error: error.message || "Erro desconhecido ao criar convite." 
-      };
+      throw new HttpException(
+        `Erro ao enviar convite. ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
-  
-
 
   async createInvitesToAll(inviteCount: number) {
     if (inviteCount <= 0) {
-      throw new Error("A quantidade de convites deve ser maior que zero.");
+      throw new Error('A quantidade de convites deve ser maior que zero.');
     }
 
     // Atualiza todos os perfis de uma vez, incrementando os convites
@@ -85,7 +90,9 @@ export class InviteManagementService {
       },
     });
 
-    return { message: `Foram enviados ${inviteCount} convites para todos os usuários.` };
+    return {
+      message: `Foram enviados ${inviteCount} convites para todos os usuários.`,
+    };
   }
 
   async removeInvite(id: string) {
@@ -94,13 +101,13 @@ export class InviteManagementService {
     });
 
     if (!invite) {
-      throw new Error("Convite nao encontrado.");
+      throw new Error('Convite nao encontrado.');
     }
 
     await this.prisma.invite.delete({
       where: { id },
     });
 
-    return { message: "Convite removido." };
+    return { message: 'Convite removido.' };
   }
 }
