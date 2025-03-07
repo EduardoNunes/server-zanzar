@@ -10,7 +10,7 @@ export class AdModalService {
     process.env.SUPABASE_KEY,
   );
 
-  constructor(private prisma: PrismaService) { }
+  constructor(private prisma: PrismaService) {}
 
   async getEligibleAd(profileId?: string) {
     try {
@@ -41,75 +41,137 @@ export class AdModalService {
 
       if (!ads || ads.length === 0) return null;
 
-      // Check daily limits and generate signed URLs
+      // Validação para cada anúncio
       for (const ad of ads) {
-        if (!ad.dailyLimit) {
-          // Generate signed URL for media
-          if (ad.mediaUrl) {
-            try {
-              const mediaPath = ad.mediaUrl.replace(
-                'https://livpgjkudsvjcvapfcjq.supabase.co/storage/v1/object/public/zanzar-images/',
-                '',
-              );
-              const { data, error } = await this.supabase.storage
-                .from('zanzar-images')
-                .createSignedUrl(mediaPath, 3600);  // 1 hour expiration
+        if (
+          ad.dailyLimit ||
+          (ad.userLimitShow && profileId) ||
+          (ad.timeInterval && profileId)
+        ) {
+          const todayStart = new Date(now);
+          todayStart.setHours(0, 0, 0, 0);
+          const todayEnd = new Date(now);
+          todayEnd.setHours(23, 59, 59, 999);
+
+          // Consulta única para recuperar todas as informações necessárias
+          const adViews = await this.prisma.adViews.findMany({
+            where: {
+              adId: ad.id,
+              OR: [
+                { lastView: { gte: todayStart, lte: todayEnd } }, // Para contagem diária
+                { profileId: profileId }, // Para limites por usuário
+              ],
+            },
+            orderBy: { lastView: 'desc' },
+          });
+
+          if (adViews.length === 0) {
+            await this.prisma.$transaction([
+              this.prisma.adViews.create({
+                data: {
+                  adId: ad.id,
+                  profileId: profileId,
+                  quantView: 1,
+                  lastView: now,
+                },
+              }),
               
-              if (error) {
-                console.error(
-                  `Error generating signed URL for advertisement ${ad.id}:`,
-                  error,
-                );
-              } else {
-                ad.mediaUrl = data.signedUrl;
+              this.prisma.advertisements.update({
+                where: { id: ad.id },
+                data: {
+                  totalViews: { increment: 1 },
+                },
+              }),
+            ]);
+          } else {
+            // Verifica limite diário
+            if (ad.dailyLimit) {
+              const viewsToday = adViews.filter(
+                (view) =>
+                  view.lastView >= todayStart && view.lastView <= todayEnd,
+              ).length;
+
+              if (viewsToday >= ad.dailyLimit) {
+                continue;
               }
-            } catch (error) {
-              console.error(
-                `Unexpected error processing advertisement ${ad.id}:`,
-                error,
-              );
             }
+
+            // Verifica limite de exibições por usuário
+            if (ad.userLimitShow && profileId) {
+              const userAdView = adViews.find(
+                (view) => view.profileId === profileId,
+              );
+
+              if (userAdView && userAdView.quantView >= ad.userLimitShow) {
+                continue;
+              }
+            }
+
+            // Verifica intervalo de tempo entre visualizações
+            if (ad.timeInterval && profileId) {
+              const lastView = adViews.find(
+                (view) => view.profileId === profileId && view.adId === ad.id,
+              );
+
+              if (lastView && lastView.lastView) {
+                const nextAvailableView = new Date(lastView.lastView);
+                nextAvailableView.setMinutes(
+                  nextAvailableView.getMinutes() + ad.timeInterval,
+                );
+
+                if (now < nextAvailableView) {
+                  continue;
+                }
+              }
+            }
+
+            await this.prisma.$transaction([
+              this.prisma.adViews.updateMany({
+                where: {
+                  adId: ad.id,
+                  profileId: profileId,
+                },
+                data: {
+                  quantView: { increment: 1 },
+                  lastView: now,
+                },
+              }),
+              this.prisma.advertisements.update({
+                where: { id: ad.id },
+                data: {
+                  totalViews: { increment: 1 },
+                },
+              }),
+            ]);
           }
-          return ad;
         }
 
-        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        const viewCount = await this.prisma.adViews.count({
-          where: {
-            adId: ad.id,
-            viewedAt: { gte: todayStart },
-          },
-        });
+        if (ad.mediaUrl) {
+          try {
+            const mediaPath = ad.mediaUrl.replace(
+              'https://livpgjkudsvjcvapfcjq.supabase.co/storage/v1/object/public/zanzar-images/',
+              '',
+            );
+            const { data, error } = await this.supabase.storage
+              .from('zanzar-images')
+              .createSignedUrl(mediaPath, 3600);
 
-        if (viewCount < ad.dailyLimit) {
-          // Generate signed URL for media
-          if (ad.mediaUrl) {
-            try {
-              const mediaPath = ad.mediaUrl.replace(
-                'https://livpgjkudsvjcvapfcjq.supabase.co/storage/v1/object/public/zanzar-images/',
-                '',
-              );
-              const { data, error } = await this.supabase.storage
-                .from('zanzar-images')
-                .createSignedUrl(mediaPath, 3600);  // 1 hour expiration
-              
-              if (error) {
-                console.error(
-                  `Error generating signed URL for advertisement ${ad.id}:`,
-                  error,
-                );
-              } else {
-                ad.mediaUrl = data.signedUrl;
-              }
-            } catch (error) {
+            if (error) {
               console.error(
-                `Unexpected error processing advertisement ${ad.id}:`,
+                `Error generating signed URL for advertisement ${ad.id}:`,
                 error,
               );
+            } else {
+              ad.mediaUrl = data.signedUrl;
             }
+          } catch (error) {
+            console.error(
+              `Unexpected error processing advertisement ${ad.id}:`,
+              error,
+            );
           }
-          return ad;
         }
+        return ad;
       }
 
       return null;
@@ -119,28 +181,22 @@ export class AdModalService {
     }
   }
 
-  async recordAdView(adId: string, profileId?: string): Promise<void> {
-    try {
-      await this.prisma.adViews.create({
-        data: {
-          adId,
-          profileId,
-        },
-      });
-    } catch (error) {
-      this.logger.error('Error recording ad view', error);
-      throw error;
-    }
-  }
-
   async recordAdClick(adId: string, profileId?: string): Promise<void> {
     try {
-      await this.prisma.adClicks.create({
-        data: {
-          adId,
-          profileId,
-        },
-      });
+      await this.prisma.$transaction([
+        this.prisma.adViews.updateMany({
+          where: { adId, profileId },
+          data: {
+            manyClicks: { increment: 1 },
+          },
+        }),
+        this.prisma.advertisements.update({
+          where: { id: adId },
+          data: {
+            totalClicks: { increment: 1 },
+          },
+        }),
+      ]);
     } catch (error) {
       this.logger.error('Error recording ad click', error);
       throw error;
