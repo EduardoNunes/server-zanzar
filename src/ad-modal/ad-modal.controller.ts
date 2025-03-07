@@ -27,20 +27,6 @@ export class AdModalController {
     return this.adModalService.getEligibleAd(profileId || userId);
   }
 
-  @Post('view')
-  @UseGuards(JwtAuthGuard)
-  @HttpCode(HttpStatus.NO_CONTENT)
-  async recordAdView(
-    @Req() req: Request,
-    @Body() body: { adId: string; profileId?: string },
-  ) {
-    const userId = req.user['id'];
-    await this.adModalService.recordAdView(
-      body.adId,
-      body.profileId || userId,
-    );
-  }
-
   @Post('click')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
