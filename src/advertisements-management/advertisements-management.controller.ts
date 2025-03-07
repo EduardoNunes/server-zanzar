@@ -10,7 +10,7 @@ import {
   UploadedFile,
   UseInterceptors,
   HttpException,
-  HttpStatus
+  HttpStatus,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AdvertisementsManagementService } from './advertisements-management.service';
@@ -20,7 +20,9 @@ import { AdminGuard } from '../auth/guard/admin.guard';
 @Controller('admin/advertisements')
 @UseGuards(JwtAuthGuard, AdminGuard)
 export class AdvertisementsManagementController {
-  constructor(private readonly advertisementsService: AdvertisementsManagementService) { }
+  constructor(
+    private readonly advertisementsService: AdvertisementsManagementService,
+  ) {}
 
   @Get()
   async getAdvertisements() {
@@ -31,7 +33,7 @@ export class AdvertisementsManagementController {
       console.error('Error in getAdvertisements:', error);
       throw new HttpException(
         'Failed to fetch advertisements',
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -43,7 +45,10 @@ export class AdvertisementsManagementController {
     @UploadedFile() file: Express.Multer.File | undefined,
   ) {
     try {
-      const ad = await this.advertisementsService.createAdvertisementWithMedia(file, data);
+      const ad = await this.advertisementsService.createAdvertisementWithMedia(
+        file,
+        data,
+      );
       return ad;
     } catch (error) {
       console.error('Error in createAdvertisement:', error);
@@ -54,7 +59,7 @@ export class AdvertisementsManagementController {
 
       throw new HttpException(
         'Failed to create advertisement',
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -64,10 +69,14 @@ export class AdvertisementsManagementController {
   async updateAdvertisement(
     @Param('id') id: string,
     @Body() data: any,
-    @UploadedFile() file: Express.Multer.File
+    @UploadedFile() file: Express.Multer.File,
   ) {
     try {
-      const ad = await this.advertisementsService.updateAdvertisementWithMedia(id, file, data);
+      const ad = await this.advertisementsService.updateAdvertisementWithMedia(
+        id,
+        file,
+        data,
+      );
       return ad;
     } catch (error) {
       console.error('Error in updateAdvertisement:', error);
@@ -78,7 +87,7 @@ export class AdvertisementsManagementController {
 
       throw new HttpException(
         'Failed to update advertisement',
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -92,7 +101,7 @@ export class AdvertisementsManagementController {
       console.error('Error in deleteAdvertisement:', error);
       throw new HttpException(
         'Failed to delete advertisement',
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
