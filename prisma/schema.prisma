@@ -8,25 +8,24 @@ datasource db {
 }
 
 model Posts {
-  id           String     @id @default(uuid())
-  profileId    String
-  mediaUrl     String
-  caption      String?
-  isPublic     Boolean    @default(false)
-  createdAt    DateTime   @default(now())
-  likes        Likes[]
-  comments     Comments[]
-  profile      Profiles   @relation(fields: [profileId], references: [id])
+  id        String     @id @default(uuid())
+  profileId String
+  mediaUrl  String
+  caption   String?
+  isPublic  Boolean    @default(false)
+  createdAt DateTime   @default(now())
+  likes     Likes[]
+  comments  Comments[]
+  profile   Profiles   @relation(fields: [profileId], references: [id])
 
-  categoryId   String?
-  category     Categories? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  categoryId String?
+  category   Categories? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
-  order        Int        // Coluna sem uso, foi colocando p/ ordenar os posts na exibição
+  order Int // Coluna sem uso, foi colocando p/ ordenar os posts na exibição
 
-  likesCount   Int        @default(0) // Nova coluna com valor padrão 0
-  commentsCount Int       @default(0) // Nova coluna com valor padrão 0
+  likesCount    Int @default(0) // Nova coluna com valor padrão 0
+  commentsCount Int @default(0) // Nova coluna com valor padrão 0
 }
-
 
 model Likes {
   id        String   @id @default(uuid())
@@ -70,13 +69,12 @@ model Profiles {
   lastSignInAt     DateTime?
   posts            Posts[]
   likes            Likes[]
-  comments        Comments[]
+  comments         Comments[]
   followers        Followers[]        @relation("FollowerRelation")
   following        Followers[]        @relation("FollowingRelation")
   sentMessages     DirectMessages[]   @relation("Sender")
   receivedMessages DirectMessages[]   @relation("Receiver")
-  adViews          AdViews[]
-  adClicks         AdClicks[]
+  adViews          AdViews[] // Relacionamento com AdViews
   user             User               @relation(fields: [userId], references: [id])
   chatParticipants ChatParticipants[]
   chatMessages     ChatMessages[]
@@ -86,12 +84,12 @@ model Profiles {
   totalPosts       Int                @default(0)
 
   receivedNotifications Notification[] @relation("ProfileNotifications")
-  sentNotifications Notification[]     @relation("SenderNotifications")
+  sentNotifications     Notification[] @relation("SenderNotifications")
 
-  invitesSent      Invite[]            @relation("Inviter")
-  invites          Int                 @default(0)
+  invitesSent Invite[] @relation("Inviter")
+  invites     Int      @default(0)
 
-  categories       Categories[]        // Relação 1 para N com Categories
+  categories Categories[] // Relação 1 para N com Categories
 }
 
 model Comments {
@@ -115,41 +113,42 @@ model Products {
 }
 
 model AdViews {
-  id        String         @id @default(uuid())
-  adId      String
-  profileId String
-  viewedAt  DateTime       @default(now())
-  ad        Advertisements @relation(fields: [adId], references: [id])
-  profile   Profiles       @relation(fields: [profileId], references: [id])
-}
+  id         String    @id @default(uuid())
+  adId       String
+  profileId  String
+  viewedAt   DateTime  @default(now())
+  quantView  Int       @default(1) // Conta quantas vezes o usuário viu a propaganda
+  lastView   DateTime? // Última visualização registrada
+  manyClicks Int       @default(0) // Conta quantos cliques o usuário deu no anúncio
 
-model AdClicks {
-  id        String         @id @default(uuid())
-  adId      String
-  profileId String
-  clickedAt DateTime       @default(now())
-  ad        Advertisements @relation(fields: [adId], references: [id])
-  profile   Profiles       @relation(fields: [profileId], references: [id])
+  ad      Advertisements @relation(fields: [adId], references: [id])
+  profile Profiles       @relation(fields: [profileId], references: [id])
 }
 
 model Advertisements {
-  id            String     @id @default(uuid())
+  id            String    @id @default(uuid())
   title         String
   description   String?
-  mediaUrl      String?    // Torna o campo opcional
-  mediaType     String?    // Torna o campo opcional
+  mediaUrl      String?
+  mediaType     String?
   linkUrl       String?
   startDate     DateTime
   endDate       DateTime
   dailyLimit    Int?
   scheduleStart DateTime?
   scheduleEnd   DateTime?
-  showOnStartup Boolean    @default(false)
-  active        Boolean    @default(true)
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
-  adViews       AdViews[]
-  adClicks      AdClicks[]
+  showOnStartup Boolean   @default(false)
+  active        Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  totalViews  Int @default(0) // Conta o total de visualizações do anúncio
+  totalClicks Int @default(0) // Conta o total de cliques no anúncio
+
+  userLimitShow Int? // Número máximo de vezes que um usuário pode ver o anúncio
+  timeInterval  Int? // Intervalo de tempo (em minutos) entre as exibições para o mesmo usuário
+
+  adViews AdViews[] // Relacionamento com AdViews
 }
 
 model User {
@@ -218,14 +217,14 @@ model Notification {
 }
 
 model Invite {
-  id         String   @id @default(uuid())
+  id         String    @id @default(uuid())
   inviterId  String
-  email      String   @unique
-  status     String   @default("pending") // pending, accepted, expired
-  sentAt     DateTime @default(now())
+  email      String    @unique
+  status     String    @default("pending")
+  sentAt     DateTime  @default(now())
   acceptedAt DateTime?
 
-  inviter    Profiles @relation("Inviter", fields: [inviterId], references: [id])
+  inviter Profiles @relation("Inviter", fields: [inviterId], references: [id])
 }
 
 model Categories {
@@ -233,7 +232,7 @@ model Categories {
   profileId  String
   categories String
   profile    Profiles @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  posts      Posts[]  // Relação 1 para N com Posts
+  posts      Posts[]
 
   @@index([profileId]) // Índice para otimizar buscas por profileId
 }
