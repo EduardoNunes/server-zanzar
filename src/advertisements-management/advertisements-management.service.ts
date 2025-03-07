@@ -1,4 +1,9 @@
-import { Injectable, BadRequestException, HttpException, HttpStatus } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  HttpException,
+  HttpStatus,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { createClient } from '@supabase/supabase-js';
 
@@ -9,31 +14,26 @@ export class AdvertisementsManagementService {
     process.env.SUPABASE_KEY,
   );
 
-  constructor(private prisma: PrismaService) { }
+  constructor(private prisma: PrismaService) {}
 
   async getAdvertisements() {
     const advertisements = await this.prisma.advertisements.findMany({
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
     });
 
-    // Get views and clicks counts for each advertisement
+    // pegar contagem de visualizações e cliques para cada anúncio
     const advertisementsWithCounts = await Promise.all(
       advertisements.map(async (ad) => {
-        const viewsCount = await this.prisma.adViews.count({
+        //conta quantos usuários visualizaram o anúncio
+        const usersViewsCount = await this.prisma.adViews.count({
           where: { adId: ad.id },
         });
-
-        const clicksCount = await this.prisma.adClicks.count({
-          where: { adId: ad.id },
-        });
-
 
         return {
           ...ad,
-          views_count: viewsCount,
-          clicks_count: clicksCount,
+          usersViewsCount: usersViewsCount, //quantidade de usuários que visualizaram o anúncio
         };
-      })
+      }),
     );
     // Generate signed URLs for advertisements
     const advertisementsWithSignedUrls = await Promise.all(
@@ -48,7 +48,7 @@ export class AdvertisementsManagementService {
             );
             const { data, error } = await this.supabase.storage
               .from('zanzar-images')
-              .createSignedUrl(mediaPath, 3600);  // 1 hour expiration
+              .createSignedUrl(mediaPath, 3600); // 1 hour expiration
 
             if (error) {
               console.error(
@@ -62,7 +62,7 @@ export class AdvertisementsManagementService {
 
           return {
             ...ad,
-            mediaUrl: signedMediaUrl || ad.mediaUrl
+            mediaUrl: signedMediaUrl || ad.mediaUrl,
           };
         } catch (error) {
           console.error(
@@ -71,7 +71,7 @@ export class AdvertisementsManagementService {
           );
           return ad;
         }
-      })
+      }),
     );
 
     return advertisementsWithSignedUrls;
@@ -82,9 +82,9 @@ export class AdvertisementsManagementService {
       where: {
         active: true,
         startDate: { lte: new Date() },
-        endDate: { gte: new Date() }
+        endDate: { gte: new Date() },
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
     });
 
     // Generate signed URLs for advertisements
@@ -100,7 +100,7 @@ export class AdvertisementsManagementService {
             );
             const { data, error } = await this.supabase.storage
               .from('zanzar-images')
-              .createSignedUrl(mediaPath, 3600);  // 1 hour expiration
+              .createSignedUrl(mediaPath, 3600); // 1 hour expiration
 
             if (error) {
               console.error(
@@ -114,7 +114,7 @@ export class AdvertisementsManagementService {
 
           return {
             ...ad,
-            mediaUrl: signedMediaUrl || ad.mediaUrl
+            mediaUrl: signedMediaUrl || ad.mediaUrl,
           };
         } catch (error) {
           console.error(
@@ -123,7 +123,7 @@ export class AdvertisementsManagementService {
           );
           return ad;
         }
-      })
+      }),
     );
 
     return advertisementsWithSignedUrls;
@@ -147,7 +147,6 @@ export class AdvertisementsManagementService {
 
     // Add date validation and parsing
     const parseDate = (dateString: string | undefined): Date | null => {
-
       if (!dateString) return null;
 
       const parsedDate = new Date(dateString);
@@ -197,7 +196,6 @@ export class AdvertisementsManagementService {
 
     // Add date validation and parsing
     const parseDate = (dateString: string | undefined): Date | null => {
-
       if (!dateString) return null;
 
       const parsedDate = new Date(dateString);
@@ -234,7 +232,7 @@ export class AdvertisementsManagementService {
     try {
       // First, check if the advertisement exists
       const existingAd = await this.prisma.advertisements.findUnique({
-        where: { id }
+        where: { id },
       });
 
       if (!existingAd) {
@@ -252,20 +250,22 @@ export class AdvertisementsManagementService {
             .remove([mediaPath]);
 
           if (deleteError) {
-            console.warn(`Could not delete media file for advertisement ${id}:`, deleteError);
+            console.warn(
+              `Could not delete media file for advertisement ${id}:`,
+              deleteError,
+            );
           }
         } catch (storageError) {
-          console.error(`Error attempting to delete media for advertisement ${id}:`, storageError);
+          console.error(
+            `Error attempting to delete media for advertisement ${id}:`,
+            storageError,
+          );
         }
       }
 
       // Delete related records to handle foreign key constraints
       await this.prisma.adViews.deleteMany({
-        where: { adId: id }
-      });
-
-      await this.prisma.adClicks.deleteMany({
-        where: { adId: id }
+        where: { adId: id },
       });
 
       // Delete the advertisement from the database
@@ -284,7 +284,7 @@ export class AdvertisementsManagementService {
 
       throw new HttpException(
         `Failed to delete advertisement: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -311,9 +311,9 @@ export class AdvertisementsManagementService {
       }
 
       // Get public URL
-      const { data: { publicUrl } } = this.supabase.storage
-        .from('zanzar-images')
-        .getPublicUrl(filePath);
+      const {
+        data: { publicUrl },
+      } = this.supabase.storage.from('zanzar-images').getPublicUrl(filePath);
 
       return publicUrl;
     } catch (error) {
@@ -323,20 +323,19 @@ export class AdvertisementsManagementService {
   }
 
   async createAdvertisementWithMedia(
-    file: Express.Multer.File | undefined, // Torna o arquivo opcional
-    data: any
+    file: Express.Multer.File | undefined,
+    data: any,
   ) {
     try {
       let mediaUrl: string | null = null;
       let mediaType: 'image' | 'video' | null = null;
 
-      // Verifica se um arquivo foi fornecido
       if (file) {
-        // Generate unique file path
+        // Gerar caminho de arquivo único
         const fileExtension = file.originalname.split('.').pop();
         const fileName = `advertisements/${Date.now()}.${fileExtension}`;
 
-        // Upload file to Supabase
+        // Upload arquivo para o Supabase
         const { data: uploadData, error: uploadError } =
           await this.supabase.storage
             .from('zanzar-images')
@@ -347,7 +346,7 @@ export class AdvertisementsManagementService {
         if (uploadError) {
           throw new HttpException(
             `Failed to upload media file: ${uploadError.message}`,
-            HttpStatus.INTERNAL_SERVER_ERROR
+            HttpStatus.INTERNAL_SERVER_ERROR,
           );
         }
 
@@ -361,17 +360,16 @@ export class AdvertisementsManagementService {
         if (!mediaUrl) {
           throw new HttpException(
             'Failed to get public URL for media',
-            HttpStatus.INTERNAL_SERVER_ERROR
+            HttpStatus.INTERNAL_SERVER_ERROR,
           );
         }
 
-        // Determine media type
         mediaType = file.mimetype.startsWith('video/') ? 'video' : 'image';
       } else {
         console.log('Nenhum arquivo foi enviado. Criando anúncio sem mídia.');
       }
 
-      // Add date validation and parsing
+      // adiciona validação e análise de data
       const parseDate = (dateString: string | undefined): Date | null => {
         if (!dateString) return null;
         const parsedDate = new Date(dateString);
@@ -388,17 +386,19 @@ export class AdvertisementsManagementService {
         data: {
           title: data.title,
           description: data.description || null,
-          mediaUrl: mediaUrl, // Pode ser null se nenhum arquivo foi fornecido
-          mediaType: mediaType, // Pode ser null se nenhum arquivo foi fornecido
+          mediaUrl: mediaUrl,
+          mediaType: mediaType,
           linkUrl: data.linkUrl || null,
           startDate: parseDate(data.startDate),
           endDate: parseDate(data.endDate),
           dailyLimit: Number(data.dailyLimit) || null,
+          timeInterval: Number(data.timeInterval) || null,
+          userLimitShow: Number(data.userLimitShow) || null,
           scheduleStart: parseDate(data.scheduleStart),
           scheduleEnd: parseDate(data.scheduleEnd),
-          showOnStartup: Boolean(data.showOnStartup),
-          active: Boolean(data.active)
-        }
+          showOnStartup: data.showOnStartup === 'true' ? true : false,
+          active: data.active === 'true' ? true : false,
+        },
       });
 
       return advertisement;
@@ -409,26 +409,25 @@ export class AdvertisementsManagementService {
       }
       throw new HttpException(
         'Failed to create advertisement',
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
 
   async updateAdvertisementWithMedia(
     id: string,
-    file: Express.Multer.File | undefined, // Torna o arquivo opcional
-    data: any
+    file: Express.Multer.File | undefined,
+    data: any,
   ) {
     try {
-      // First, check if the advertisement exists
       const existingAd = await this.prisma.advertisements.findUnique({
-        where: { id }
+        where: { id },
       });
+
       if (!existingAd) {
         throw new BadRequestException(`Advertisement with id ${id} not found`);
       }
 
-      // Validate input data
       if (!data) {
         throw new BadRequestException('No update data provided');
       }
@@ -454,7 +453,7 @@ export class AdvertisementsManagementService {
           console.error('Supabase upload error:', uploadError);
           throw new HttpException(
             `Failed to upload media file: ${uploadError.message}`,
-            HttpStatus.INTERNAL_SERVER_ERROR
+            HttpStatus.INTERNAL_SERVER_ERROR,
           );
         }
 
@@ -468,11 +467,10 @@ export class AdvertisementsManagementService {
         if (!mediaUrl) {
           throw new HttpException(
             'Failed to get public URL for media',
-            HttpStatus.INTERNAL_SERVER_ERROR
+            HttpStatus.INTERNAL_SERVER_ERROR,
           );
         }
 
-        // Determine media type
         mediaType = file.mimetype.startsWith('video/') ? 'video' : 'image';
       }
 
@@ -498,30 +496,37 @@ export class AdvertisementsManagementService {
       const advertisement = await this.prisma.advertisements.update({
         where: { id },
         data: {
-          title: data.title || existingAd.title, // Mantém o valor existente se não for fornecido
-          description: data.description || existingAd.description, // Mantém o valor existente
-          mediaUrl: mediaUrl, // Pode ser o valor existente ou o novo valor
-          mediaType: mediaType, // Pode ser o valor existente ou o novo valor
-          linkUrl: data.linkUrl || existingAd.linkUrl, // Mantém o valor existente
-          startDate: parseDate(data.startDate) || existingAd.startDate, // Mantém o valor existente
-          endDate: parseDate(data.endDate) || existingAd.endDate, // Mantém o valor existente
-          dailyLimit: dailyLimit || existingAd.dailyLimit, // Mantém o valor existente
-          scheduleStart: parseDate(data.scheduleStart) || existingAd.scheduleStart, // Mantém o valor existente
-          scheduleEnd: parseDate(data.scheduleEnd) || existingAd.scheduleEnd, // Mantém o valor existente
-          showOnStartup: data.showOnStartup === 'true' || data.showOnStartup === true,
-          active: data.active === 'true' || data.active === true
-        }
+          title: data.title || existingAd.title,
+          description: data.description || existingAd.description,
+          mediaUrl: mediaUrl,
+          mediaType: mediaType,
+          linkUrl: data.linkUrl || existingAd.linkUrl,
+          startDate: parseDate(data.startDate) || existingAd.startDate,
+          endDate: parseDate(data.endDate) || existingAd.endDate,
+          dailyLimit: dailyLimit || existingAd.dailyLimit,
+          timeInterval: Number(data.timeInterval) || null,
+          userLimitShow: Number(data.userLimitShow) || null,
+          scheduleStart:
+            parseDate(data.scheduleStart) || existingAd.scheduleStart,
+          scheduleEnd: parseDate(data.scheduleEnd) || existingAd.scheduleEnd,
+          showOnStartup:
+            data.showOnStartup === 'true' || data.showOnStartup === true,
+          active: data.active === 'true' || data.active === true,
+        },
       });
 
       return advertisement;
     } catch (error) {
       console.error('Detailed error updating advertisement:', error);
-      if (error instanceof HttpException || error instanceof BadRequestException) {
+      if (
+        error instanceof HttpException ||
+        error instanceof BadRequestException
+      ) {
         throw error;
       }
       throw new HttpException(
         `Failed to update advertisement: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
