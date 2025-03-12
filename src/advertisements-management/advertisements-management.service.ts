@@ -77,58 +77,6 @@ export class AdvertisementsManagementService {
     return advertisementsWithSignedUrls;
   }
 
-  async getActiveAdvertisements() {
-    const advertisements = await this.prisma.advertisements.findMany({
-      where: {
-        active: true,
-        startDate: { lte: new Date() },
-        endDate: { gte: new Date() },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    // Generate signed URLs for advertisements
-    const advertisementsWithSignedUrls = await Promise.all(
-      advertisements.map(async (ad) => {
-        try {
-          let signedMediaUrl = null;
-
-          if (ad.mediaUrl) {
-            const mediaPath = ad.mediaUrl.replace(
-              'https://livpgjkudsvjcvapfcjq.supabase.co/storage/v1/object/public/zanzar-images/',
-              '',
-            );
-            const { data, error } = await this.supabase.storage
-              .from('zanzar-images')
-              .createSignedUrl(mediaPath, 3600); // 1 hour expiration
-
-            if (error) {
-              console.error(
-                `Error generating signed URL for advertisement ${ad.id}:`,
-                error,
-              );
-            } else {
-              signedMediaUrl = data.signedUrl;
-            }
-          }
-
-          return {
-            ...ad,
-            mediaUrl: signedMediaUrl || ad.mediaUrl,
-          };
-        } catch (error) {
-          console.error(
-            `Unexpected error processing advertisement ${ad.id}:`,
-            error,
-          );
-          return ad;
-        }
-      }),
-    );
-
-    return advertisementsWithSignedUrls;
-  }
-
   async createAdvertisement(data: any) {
     const {
       title,
