@@ -57,14 +57,13 @@ export class AdModalService {
           const adViews = await this.prisma.adViews.findMany({
             where: {
               adId: ad.id,
-              OR: [
-                { lastView: { gte: todayStart, lte: todayEnd } }, // Para contagem diária
-                { profileId: profileId }, // Para limites por usuário
-              ],
-            },
+              profileId: profileId,
+              lastView: { gte: todayStart, lte: todayEnd },
+            }, // Para contagem diária
+
             orderBy: { lastView: 'desc' },
           });
-
+          console.log('ADVIEWS', adViews, profileId);
           if (adViews.length === 0) {
             await this.prisma.$transaction([
               this.prisma.adViews.create({
@@ -75,7 +74,7 @@ export class AdModalService {
                   lastView: now,
                 },
               }),
-              
+
               this.prisma.advertisements.update({
                 where: { id: ad.id },
                 data: {
