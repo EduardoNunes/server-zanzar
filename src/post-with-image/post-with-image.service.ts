@@ -360,6 +360,7 @@ export class PostsService {
 
   async addComments(data: any) {
     const { postId, profileId, content } = data;
+    
     try {
       const profile = await this.prisma.profiles.findUnique({
         where: { id: profileId },

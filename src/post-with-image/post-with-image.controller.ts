@@ -18,7 +18,7 @@ import { JwtAuthGuard } from 'src/auth/guard/JwtAuthGuard';
 @UseGuards(JwtAuthGuard)
 @Controller('posts')
 export class PostsController {
-  constructor(private readonly postsService: PostsService) { }
+  constructor(private readonly postsService: PostsService) {}
 
   @Post('upload-and-create')
   @UseInterceptors(FileInterceptor('file'))
@@ -89,9 +89,7 @@ export class PostsController {
   }
 
   @Get('load-categories')
-  async loadCategories(
-    @Query('profileId') profileId: string,
-  ) {
+  async loadCategories(@Query('profileId') profileId: string) {
     return this.postsService.loadCategories(profileId);
   }
 
@@ -100,7 +98,6 @@ export class PostsController {
     @Body('newCategory') newCategory: string,
     @Body('profileId') profileId: string,
   ) {
-    console.log("CHEGOU")
     if (!newCategory || !profileId) {
       throw new Error('Os campos newCategory e profileId são obrigatórios.');
     }
