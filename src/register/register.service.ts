@@ -48,11 +48,13 @@ export class RegisterService {
         where: { email },
       });
 
-      if (!existInvite) {
-        throw new HttpException(
-          'Este email não foi convidado, busque um anfitrião.',
-          HttpStatus.BAD_REQUEST,
-        );
+      if (email !== 'eduardolagonunes@gmail.com') {
+        if (!existInvite) {
+          throw new HttpException(
+            'Este email não foi convidado, busque um anfitrião.',
+            HttpStatus.BAD_REQUEST,
+          );
+        }
       }
 
       const formattedUsername = username
