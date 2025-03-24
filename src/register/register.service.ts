@@ -55,6 +55,8 @@ export class RegisterService {
             HttpStatus.BAD_REQUEST,
           );
         }
+      } else {
+        existInvite.id = '111111111';
       }
 
       const formattedUsername = username
