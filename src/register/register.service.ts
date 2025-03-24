@@ -48,12 +48,12 @@ export class RegisterService {
         where: { email },
       });
 
-/*       if (!existInvite) {
+      if (!existInvite) {
         throw new HttpException(
           'Este email não foi convidado, busque um anfitrião.',
           HttpStatus.BAD_REQUEST,
         );
-      } */
+      }
 
       const formattedUsername = username
         .toLowerCase()
@@ -87,12 +87,12 @@ export class RegisterService {
           },
         });
 
-/*         const inviteAccepted = await prisma.invite.update({
+        const inviteAccepted = await prisma.invite.update({
           where: { id: existInvite.id },
           data: { status: 'accepted' },
-        }); */
+        });
 
-        return { newUser, newProfile/* , inviteAccepted */ };
+        return { newUser, newProfile, inviteAccepted };
       });
 
       return {
