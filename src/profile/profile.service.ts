@@ -94,12 +94,7 @@ export class ProfileService {
     }
   }
 
-  async getPosts(
-    username: string,
-    page: number = 1,
-    limit: number = 4,
-    loggedInProfileId?: string,
-  ) {
+  async getPosts(username: string, page: number = 1, limit: number = 4) {
     try {
       const profile = await this.prisma.profiles.findUnique({
         where: { username },
@@ -111,7 +106,7 @@ export class ProfileService {
 
       const skipCategories = (page - 1) * limit;
 
-      // Get unique categories for the profile
+      // Pegar as categorias únicas dos posts do perfil
       const uniqueCategories = await this.prisma.posts.findMany({
         where: { profileId: profile.id },
         distinct: ['categoryId'],
@@ -129,7 +124,7 @@ export class ProfileService {
         take: limit,
       });
 
-      //Fetch the first 3 posts of each category.
+      //Buscar os posts de cada categoria
       const postsByCategory = await Promise.all(
         uniqueCategories.map(async (cat) => {
           const category = cat.category.categories;
@@ -177,7 +172,7 @@ export class ProfileService {
         }),
       );
 
-      //Flatten the array of arrays
+      //Condensar os arrays de arrays em um único array
       const allPosts = postsByCategory.flat();
 
       const postsWithSignedUrls = await Promise.all(
@@ -217,9 +212,9 @@ export class ProfileService {
               };
             }
 
-            // Check if the logged-in profile has liked the post
-            const likedByLoggedInUser = loggedInProfileId
-              ? post.likes.some((like) => like.profile.id === loggedInProfileId)
+            // Checa se o post foi curtido pelo usuário logado
+            const likedByLoggedInUser = profile.id
+              ? post.likes.some((like) => like.profile.id === profile.id)
               : false;
 
             return {
