@@ -63,7 +63,7 @@ export class AdModalService {
 
             orderBy: { lastView: 'desc' },
           });
-          console.log('ADVIEWS', adViews, profileId);
+
           if (adViews.length === 0) {
             await this.prisma.$transaction([
               this.prisma.adViews.create({

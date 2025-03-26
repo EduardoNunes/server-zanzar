@@ -36,9 +36,8 @@ export class ProfileController {
     @Param('username') username: string,
     @Query('page') page: number,
     @Query('limit') limit: number,
-    @Query('profileId') profileId?: string,
   ) {
-    return this.profileService.getPosts(username, page, limit, profileId);
+    return this.profileService.getPosts(username, page, limit);
   }
 
   @Post('profile-image')
@@ -69,6 +68,11 @@ export class ProfileController {
     @Query('limit') limit: number,
     @Query('profileId') profileId: string,
   ) {
-    return this.profileService.getPostsByCategory(categoryId, profileId, page, limit);
+    return this.profileService.getPostsByCategory(
+      categoryId,
+      profileId,
+      page,
+      limit,
+    );
   }
 }
