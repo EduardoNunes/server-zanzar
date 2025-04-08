@@ -8,7 +8,7 @@ export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
-  ) { }
+  ) {}
 
   async login(email: string, password: string) {
     const user = await this.prisma.user.findUnique({
@@ -22,8 +22,8 @@ export class AuthService {
             id: true,
             role: true,
             username: true,
-            invites: true
-          }
+            invites: true,
+          },
         },
       },
     });
@@ -38,34 +38,30 @@ export class AuthService {
       throw new BadRequestException('Email ou senha inválidos');
     }
 
-    // Update lastSignInAt in profile
+    // Atualiza a última data de login
     await this.prisma.profiles.update({
       where: { id: user.profile.id },
       data: { lastSignInAt: new Date() },
     });
 
     const unreadNotificationsCount = await this.prisma.notification.count({
-      where: {
-        receiverId: user.profile.id,
-        isRead: false,
-      },
+      where: { receiverId: user.profile.id, isRead: false },
       take: 9,
     });
 
-    // Fetch unread messages per conversation
     const unreadChatMessages = await this.prisma.chatConversation.count({
       where: {
         participants: {
-          some: { profileId: user.profile.id } // Garante que o usuário faz parte da conversa
+          some: { profileId: user.profile.id },
         },
         messages: {
           some: {
             readStatus: {
-              none: { profileId: user.profile.id }
-            }
-          }
-        }
-      }
+              none: { profileId: user.profile.id },
+            },
+          },
+        },
+      },
     });
 
     const payload = {

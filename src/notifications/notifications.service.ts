@@ -28,17 +28,59 @@ export class NotificationsService {
     return response;
   }
 
-  async getNotifications(receiverId: string) {
-    console.log("prfileID", receiverId)
-    return this.prisma.notification.findMany({
+  async getNotifications(
+    receiverId: string,
+    page: number = 1,
+    limit: number = 10,
+  ) {
+    // Calcular o skip com base na página e limite
+    const skip = (page - 1) * limit;
+
+    // Obter o total de notificações para este usuário
+    const total = await this.prisma.notification.count({
+      where: { receiverId },
+    });
+
+    // Obter o total de notificações não lidas
+    const unreadCount = await this.prisma.notification.count({
+      where: {
+        receiverId,
+        isRead: false,
+      },
+    });
+
+    // Obter as notificações paginadas
+    const notifications = await this.prisma.notification.findMany({
       where: { receiverId },
       orderBy: { createdAt: 'desc' },
+      skip,
+      take: Number(limit),
     });
+
+    // Retornar os dados paginados junto com metadados
+    return {
+      data: notifications,
+      meta: {
+        total,
+        unreadCount,
+        page,
+        limit,
+        hasMore: total > skip + limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
 
   async markAsRead(notificationId: string) {
     return this.prisma.notification.update({
       where: { id: notificationId },
+      data: { isRead: true },
+    });
+  }
+
+  async markAllAsRead(profileId: string) {
+    return this.prisma.notification.updateMany({
+      where: { receiverId: profileId, isRead: false },
       data: { isRead: true },
     });
   }

@@ -29,7 +29,6 @@ export class PostsService {
     order: number,
   ) {
     try {
-      //formatos permitidos
       const allowedImageTypes = ['image/jpeg', 'image/jpg'];
       const allowedVideoTypes = ['video/mp4'];
 

@@ -33,14 +33,40 @@ export class ChatGateway {
     @ConnectedSocket() client: Socket,
   ) {
     const message = await this.chatService.createMessage(data);
-    
-    // Automaticamente marcar mensagens anteriores como lidas para o destinatário
+
+    // Obter os participantes da conversa
+    const conversation = await this.chatService.getConversation(
+      data.conversationId,
+    );
+    const recipientId = conversation.participants.find(
+      (p) => p.profileId !== data.profileId,
+    )?.profileId;
+
+    // Marcar mensagens como lidas apenas para o remetente
     await this.chatService.markConversationAsRead(
-      data.conversationId, 
-      message.profileId
+      data.conversationId,
+      data.profileId,
     );
 
+    // Emitir para a sala específica
     this.server.to(data.conversationId).emit('newMessage', message);
+
+    // Emitir para o destinatário específico para atualizar o contador
+    if (recipientId) {
+      const recipientSocket = Array.from(
+        this.server.sockets.sockets.values(),
+      ).find((socket) => socket.handshake.query.userId === recipientId);
+
+      if (recipientSocket) {
+        recipientSocket.emit('newMessage', message);
+
+        // Obter o número de chats não lidos do destinatário
+        const unreadChats =
+          await this.chatService.getMyUnreadMessages(recipientId);
+        recipientSocket.emit('unreadChatsCount', { count: unreadChats.length });
+      }
+    }
+
     return message;
   }
 
@@ -49,7 +75,10 @@ export class ChatGateway {
   async handleMarkAsRead(
     @MessageBody() data: { messageId: string; profileId: string },
   ) {
-    const readStatus = await this.chatService.markMessageAsRead(data.messageId, data.profileId);
+    const readStatus = await this.chatService.markMessageAsRead(
+      data.messageId,
+      data.profileId,
+    );
     this.server.emit('messageRead', readStatus);
     return readStatus;
   }
@@ -93,5 +122,14 @@ export class ChatGateway {
 
   handleDisconnect(client: Socket) {
     console.log(`Client disconnected: ${client.id}`);
+  }
+
+  @SubscribeMessage('getUnreadChatsCount')
+  async handleGetUnreadChatsCount(@ConnectedSocket() client: Socket) {
+    const profileId = client.handshake.query.userId as string;
+    if (profileId) {
+      const unreadChats = await this.chatService.getMyUnreadMessages(profileId);
+      client.emit('unreadChatsCount', { count: unreadChats.length });
+    }
   }
 }

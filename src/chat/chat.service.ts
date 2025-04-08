@@ -14,7 +14,7 @@ export class ChatService {
     process.env.SUPABASE_KEY,
   );
 
-  constructor(private prisma: PrismaService) { }
+  constructor(private prisma: PrismaService) {}
 
   async getUsers(userName: string) {
     const formattedUsername = userName
@@ -87,7 +87,7 @@ export class ChatService {
 
           const { data, error } = await this.supabase.storage
             .from('zanzar-images')
-            .createSignedUrl(bucketPath, 3600);
+            .createSignedUrl(bucketPath, 86400);
 
           if (error) {
             throw new BadRequestException(
@@ -252,7 +252,7 @@ export class ChatService {
 
                 const { data, error } = await this.supabase.storage
                   .from('zanzar-images')
-                  .createSignedUrl(bucketPath, 3600);
+                  .createSignedUrl(bucketPath, 86400);
 
                 if (error) {
                   throw new BadRequestException(
@@ -331,7 +331,7 @@ export class ChatService {
               );
               const { data, error } = await this.supabase.storage
                 .from('zanzar-images')
-                .createSignedUrl(bucketPath, 3600);
+                .createSignedUrl(bucketPath, 86400);
 
               if (error) {
                 console.error(`Erro ao gerar URL assinada: ${error.message}`);
@@ -378,11 +378,11 @@ export class ChatService {
         username: true,
       },
     });
-  
+
     if (!profile) {
-      throw new Error("Perfil não encontrado");
+      throw new Error('Perfil não encontrado');
     }
-  
+
     // Gerar URL assinada para o avatar, se existir.
     if (profile.avatarUrl) {
       const bucketPath = profile.avatarUrl.replace(
@@ -392,7 +392,7 @@ export class ChatService {
 
       const { data: signedUrlData, error } = await this.supabase.storage
         .from('zanzar-images')
-        .createSignedUrl(bucketPath, 3600);
+        .createSignedUrl(bucketPath, 86400);
 
       if (error) {
         throw new BadRequestException(
@@ -402,7 +402,7 @@ export class ChatService {
 
       profile.avatarUrl = signedUrlData?.signedUrl;
     }
-  
+
     // Cria a mensagem no banco de dados
     const message = await this.prisma.chatMessages.create({
       data: {
@@ -411,7 +411,7 @@ export class ChatService {
         profileId: data.profileId,
       },
     });
-  
+
     // Retorna a mensagem com os dados do perfil incluídos
     return {
       ...message,
@@ -430,7 +430,10 @@ export class ChatService {
       });
 
       if (!message) {
-        throw new HttpException('Mensagem não encontrada', HttpStatus.NOT_FOUND);
+        throw new HttpException(
+          'Mensagem não encontrada',
+          HttpStatus.NOT_FOUND,
+        );
       }
 
       // Check if the profile exists
@@ -582,5 +585,32 @@ export class ChatService {
         },
       },
     });
+  }
+
+  async getConversation(conversationId: string) {
+    try {
+      const conversation = await this.prisma.chatConversation.findUnique({
+        where: { id: conversationId },
+        include: {
+          participants: {
+            select: {
+              profileId: true,
+            },
+          },
+        },
+      });
+
+      if (!conversation) {
+        throw new HttpException(
+          'Conversa não encontrada.',
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      return conversation;
+    } catch (error) {
+      console.error('Erro ao buscar conversa:', error);
+      throw new BadRequestException('Erro ao buscar conversa.');
+    }
   }
 }

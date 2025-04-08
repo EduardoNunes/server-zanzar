@@ -1,3 +1,6 @@
+// http://localhost:3000
+// https://zanzar.netlify.app
+
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 
@@ -6,9 +9,9 @@ async function bootstrap() {
 
   app.enableCors({
     origin: [
-      'https://zanzar.netlify.app', // URL do frontend hospedado no Netlify
-      null, // Permite requisições de dispositivos móveis (como o APK gerado com o Capacitor)
-      'http://localhost:3000', // URL do frontend hospedado localmente
+      'https://zanzar.netlify.app', 
+      null, 
+      //'http://localhost:3000',
     ],
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],
@@ -19,6 +22,3 @@ async function bootstrap() {
 }
 
 bootstrap();
-
-// http://localhost:3000
-// https://zanzar.netlify.app
