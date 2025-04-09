@@ -271,7 +271,7 @@ export class PostsService {
       });
 
       if (existingLike) {
-        await this.prisma.$transaction([
+        const newLike = await this.prisma.$transaction([
           this.prisma.likes.delete({
             where: {
               id: existingLike.id,
@@ -293,6 +293,8 @@ export class PostsService {
         return {
           message: 'Like removido com sucesso',
           postId,
+          likesCount: newLike[1].likesCount,
+          likedByLoggedInUser: false,
           profileId: profile.id,
         };
       } else {
@@ -346,6 +348,7 @@ export class PostsService {
           postId: newLike[0].postId,
           profileId: newLike[0].profileId,
           likesCount: newLike[1].likesCount,
+          likedByLoggedInUser: true,
         };
       }
     } catch (error) {
@@ -359,7 +362,7 @@ export class PostsService {
 
   async addComments(data: any) {
     const { postId, profileId, content } = data;
-    
+
     try {
       const profile = await this.prisma.profiles.findUnique({
         where: { id: profileId },
