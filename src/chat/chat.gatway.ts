@@ -51,20 +51,27 @@ export class ChatGateway {
     // Emitir para a sala específica
     this.server.to(data.conversationId).emit('newMessage', message);
 
-    // Emitir para o destinatário específico para atualizar o contador
+    // Emitir para o destinatário específico
     if (recipientId) {
-      const recipientSocket = Array.from(
+      // Emitir para todos os sockets do destinatário
+      const recipientSockets = Array.from(
         this.server.sockets.sockets.values(),
-      ).find((socket) => socket.handshake.query.userId === recipientId);
+      ).filter((socket) => socket.handshake.query.userId === recipientId);
 
-      if (recipientSocket) {
-        recipientSocket.emit('newMessage', message);
+      console.log('Sockets do destinatário:', recipientSockets.length);
 
-        // Obter o número de chats não lidos do destinatário
-        const unreadChats =
-          await this.chatService.getMyUnreadMessages(recipientId);
-        recipientSocket.emit('unreadChatsCount', { count: unreadChats.length });
-      }
+      recipientSockets.forEach((socket) => {
+        socket.emit('newMessage', message);
+        console.log('Evento newMessage emitido para socket:', socket.id);
+      });
+
+      // Obter o número de chats não lidos do destinatário
+      const unreadChats =
+        await this.chatService.getMyUnreadMessages(recipientId);
+      recipientSockets.forEach((socket) => {
+        socket.emit('unreadChatsCount', { count: unreadChats.length });
+        console.log('Evento unreadChatsCount emitido para socket:', socket.id);
+      });
     }
 
     return message;
