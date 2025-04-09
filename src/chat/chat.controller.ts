@@ -4,7 +4,7 @@ import { ChatService } from './chat.service';
 
 @Controller('chat')
 export class ChatController {
-  constructor(private readonly chatService: ChatService) { }
+  constructor(private readonly chatService: ChatService) {}
 
   @Post('create-chat')
   async createChat(
@@ -66,9 +66,12 @@ export class ChatController {
 
   @Post('mark-conversation-read')
   async markConversationAsRead(
-    @Body() data: { conversationId: string; profileId: string }
+    @Body() data: { conversationId: string; profileId: string },
   ) {
-    return this.chatService.markConversationAsRead(data.conversationId, data.profileId);
+    return this.chatService.markConversationAsRead(
+      data.conversationId,
+      data.profileId,
+    );
   }
 
   @Get('unread-messages-count')
