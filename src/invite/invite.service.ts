@@ -1,10 +1,18 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { profile } from 'console';
+import { InviteGateway } from './invite.gateway';
 
 @Injectable()
 export class InviteService {
-  constructor(private prisma: PrismaService) { }
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly inviteGateway: InviteGateway,
+  ) {}
 
   async createInvite(inviterId: string, email: string) {
     const emailLowerCase = email.toLowerCase();
@@ -21,13 +29,17 @@ export class InviteService {
       throw new BadRequestException('Você não tem convites.');
     }
 
-    const existUser = await this.prisma.user.findFirst({ where: { email: emailLowerCase } });
+    const existUser = await this.prisma.user.findFirst({
+      where: { email: emailLowerCase },
+    });
 
     if (existUser) {
       throw new BadRequestException('Este usuário já é um Zanzeiro.');
     }
 
-    const existInvite = await this.prisma.invite.findFirst({ where: { email: emailLowerCase } });
+    const existInvite = await this.prisma.invite.findFirst({
+      where: { email: emailLowerCase },
+    });
 
     if (existInvite) {
       throw new BadRequestException('Este email já foi convidado.');
@@ -46,9 +58,9 @@ export class InviteService {
       }),
     ]);
 
+    this.inviteGateway.emitNewInvite(profile.id);
     return { inviteDecrease, addInvite };
   }
-
 
   // Listar convites enviados pelo usuário
   async getInvitesByUser(userId: string) {
@@ -67,10 +79,9 @@ export class InviteService {
 
     return {
       invites,
-      invitesAvaliable: userProfile.invites
+      invitesAvaliable: userProfile.invites,
     };
   }
-
 
   // Aceitar um convite
   async acceptInvite(email: string) {
@@ -87,4 +98,18 @@ export class InviteService {
       data: { status: 'accepted', acceptedAt: new Date() },
     });
   }
+
+  async handleGetUnreadInvites(client: any, profileId: string) {
+    console.log('PROFILEID', profileId);
+    const { invites } = await this.prisma.profiles.findUnique({
+      where: {
+        id: profileId,
+      },
+      select: {
+        invites: true,
+      },
+    });
+
+    return invites;
+  }  
 }
