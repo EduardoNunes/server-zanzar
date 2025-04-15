@@ -94,13 +94,18 @@ export class ProfileService {
     }
   }
 
-  async getPosts(username: string, page: number = 1, limit: number = 4) {
+  async getPosts(
+    username: string,
+    page: number = 1,
+    limit: number = 4,
+    profileIdVisitant: string,
+  ) {
     try {
-      const profile = await this.prisma.profiles.findUnique({
+      const profileVisited = await this.prisma.profiles.findUnique({
         where: { username },
       });
 
-      if (!profile) {
+      if (!profileVisited) {
         throw new HttpException('Perfil não encontrado.', HttpStatus.NOT_FOUND);
       }
 
@@ -108,7 +113,7 @@ export class ProfileService {
 
       // Pegar as categorias únicas dos posts do perfil
       const uniqueCategories = await this.prisma.posts.findMany({
-        where: { profileId: profile.id },
+        where: { profileId: profileVisited.id },
         distinct: ['categoryId'],
         orderBy: {
           createdAt: 'desc',
@@ -131,7 +136,7 @@ export class ProfileService {
 
           const posts = await this.prisma.posts.findMany({
             where: {
-              profileId: profile.id,
+              profileId: profileVisited.id,
               category: { categories: category },
             },
             orderBy: {
@@ -203,6 +208,7 @@ export class ProfileService {
                 `Erro ao gerar URL assinada para o post ${post.id}:`,
                 error,
               );
+
               return {
                 ...post,
                 mediaUrl: null,
@@ -213,8 +219,8 @@ export class ProfileService {
             }
 
             // Checa se o post foi curtido pelo usuário logado
-            const likedByLoggedInUser = profile.id
-              ? post.likes.some((like) => like.profile.id === profile.id)
+            const likedByLoggedInUser = profileIdVisitant
+              ? post.likes.some((like) => like.profile.id === profileIdVisitant)
               : false;
 
             return {

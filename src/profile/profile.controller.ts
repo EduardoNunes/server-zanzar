@@ -36,8 +36,9 @@ export class ProfileController {
     @Param('username') username: string,
     @Query('page') page: number,
     @Query('limit') limit: number,
+    @Query('profileId') profileIdVisitant: string,
   ) {
-    return this.profileService.getPosts(username, page, limit);
+    return this.profileService.getPosts(username, page, limit, profileIdVisitant);
   }
 
   @Post('profile-image')
