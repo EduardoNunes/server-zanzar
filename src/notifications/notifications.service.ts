@@ -57,6 +57,9 @@ export class NotificationsService {
       take: Number(limit),
     });
 
+    // Calcular se há mais páginas
+    const hasMore = skip + notifications.length < total;
+
     // Retornar os dados paginados junto com metadados
     return {
       data: notifications,
@@ -65,7 +68,7 @@ export class NotificationsService {
         unreadCount,
         page,
         limit,
-        hasMore: total > skip + limit,
+        hasMore,
         totalPages: Math.ceil(total / limit),
       },
     };
