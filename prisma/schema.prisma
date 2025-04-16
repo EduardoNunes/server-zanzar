@@ -90,6 +90,27 @@ model Profiles {
   invites     Int      @default(0)
 
   categories Categories[] // Relação 1 para N com Categories
+
+  addressId   String?   @unique
+  address     Address?  @relation(fields: [addressId], references: [id])
+  userStore       UserStore?
+}
+
+model Address {
+  id         String     @id @default(uuid())
+  street     String
+  number     String
+  complement String?
+  district   String
+  city       String
+  state      String
+  country    String
+  zipCode    String
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  profile    Profiles?
+  userStore   UserStore? @relation("StoreAddress")
 }
 
 model Comments {
@@ -235,4 +256,64 @@ model Categories {
   posts      Posts[]
 
   @@index([profileId]) // Índice para otimizar buscas por profileId
+}
+
+model UserStore {
+  id             String    @id @default(uuid())
+  profileId      String    @unique
+  addressId      String?   @unique // Relação opcional com endereço
+  name           String
+  slug           String    @unique
+  description    String?
+  logoUrl        String?
+  bannerUrl      String?
+  rating         Int       @default(0)
+  totalSales     Int       @default(0)
+  totalRevenue   Int       @default(0)
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  profile        Profiles  @relation(fields: [profileId], references: [id])
+  address        Address?  @relation("StoreAddress", fields: [addressId], references: [id])
+  products       Product[]
+}
+
+model Product {
+  id          Int            @id @default(autoincrement())
+  name        String
+  description String
+  basePrice   Int
+
+  userStoreId String?        // Foreign key para UserStore
+  userStore   UserStore?     @relation(fields: [userStoreId], references: [id]) // Relação com UserStore
+
+  categoryId  Int
+  categoryProduct    CategoryProduct       @relation(fields: [categoryId], references: [id])
+  variations  ProductVariant[]
+  images      ProductImage[]
+}
+
+model CategoryProduct {
+  id        Int       @id @default(autoincrement())
+  name      String
+  products  Product[]
+}
+
+model ProductVariant {
+  id         Int     @id @default(autoincrement())
+  sku        String  @unique
+  color      String
+  size       String
+  stock      Int
+  price      Int
+  productId  Int
+  product    Product @relation(fields: [productId], references: [id])
+}
+
+model ProductImage {
+  id         Int     @id @default(autoincrement())
+  url        String
+  productId  Int
+  product    Product @relation(fields: [productId], references: [id])
 }
