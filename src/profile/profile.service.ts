@@ -84,6 +84,7 @@ export class ProfileService {
         followersCount: currentUserProfile.followersCount,
         followingCount: currentUserProfile.followingCount,
         totalPosts: currentUserProfile.totalPosts,
+        hasUserStore: currentUserProfile.hasUserStore,
       };
     } catch (error) {
       throw new BadRequestException({
