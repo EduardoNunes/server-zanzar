@@ -82,6 +82,7 @@ model Profiles {
   followersCount   Int                @default(0)
   followingCount   Int                @default(0)
   totalPosts       Int                @default(0)
+  hasUserStore     Boolean            @default(false)
 
   receivedNotifications Notification[] @relation("ProfileNotifications")
   sentNotifications     Notification[] @relation("SenderNotifications")
@@ -121,16 +122,6 @@ model Comments {
   createdAt DateTime @default(now())
   post      Posts    @relation(fields: [postId], references: [id])
   profile   Profiles @relation(fields: [profileId], references: [id])
-}
-
-model Products {
-  id          String   @id @default(uuid())
-  name        String
-  description String?
-  price       Float
-  imageUrl    String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
 }
 
 model AdViews {
@@ -259,25 +250,30 @@ model Categories {
 }
 
 model UserStore {
-  id             String    @id @default(uuid())
-  profileId      String    @unique
-  addressId      String?   @unique // Relação opcional com endereço
-  name           String
-  slug           String    @unique
-  description    String?
-  logoUrl        String?
-  bannerUrl      String?
-  rating         Int       @default(0)
-  totalSales     Int       @default(0)
-  totalRevenue   Int       @default(0)
-  isActive       Boolean   @default(true)
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id                    String    @id @default(uuid())
+  profileId             String    @unique
+  addressId             String?   @unique // Relação opcional com endereço
+  name                  String
+  slug                  String    @unique
+  description           String?
+  logoUrl               String?
+  bannerUrl             String?
+  rating                Int       @default(0)
+  totalSales            Int       @default(0)
+  totalRevenue          Int       @default(0)
+  isActive              Boolean   @default(true)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
-  profile        Profiles  @relation(fields: [profileId], references: [id])
-  address        Address?  @relation("StoreAddress", fields: [addressId], references: [id])
-  products       Product[]
+  lastSubscriptionPayment DateTime?  // Última mensalidade paga
+  subscriptionAmount       Int?      // Valor da mensalidade (em centavos, se for tipo currency)
+  productFeePercentage     Int?    // Porcentagem cobrada por produto vendido
+
+  profile               Profiles  @relation(fields: [profileId], references: [id])
+  address               Address?  @relation("StoreAddress", fields: [addressId], references: [id])
+  products              Product[]
 }
+
 
 model Product {
   id          Int            @id @default(autoincrement())
