@@ -10,7 +10,7 @@ export class AdminService {
   }
 
   async getProductsCount(): Promise<number> {
-    return this.prisma.products.count();
+    return this.prisma.product.count();
   }
 
   async getMessagesCount(): Promise<number> {
