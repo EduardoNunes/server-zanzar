@@ -19,8 +19,6 @@ export class StoreService {
     banner: Express.Multer.File
   ) {
     const { name, description, address } = storeData;
-    const { street, number, complement, neighborhood, city, state, country, postalCode } = address;
-    console.log("TYPEOF", typeof address)
 
     try {
       if (!name || !description) {
@@ -38,16 +36,26 @@ export class StoreService {
         throw new HttpException('Usuário não encontrado.', HttpStatus.NOT_FOUND);
       }
 
-      const userStoreName = await this.prisma.userStore.findFirst({
+      const existingStore = await this.prisma.userStore.findFirst({
         where: {
-          name: {
-            equals: name,
-            mode: 'insensitive',
-          },
+          OR: [
+            {
+              name: {
+                equals: name,
+                mode: 'insensitive',
+              },
+            },
+            {
+              slug: {
+                equals: name.toLowerCase().replace(/\s+/g, '-'),
+                mode: 'insensitive',
+              },
+            },
+          ],
         },
       });
 
-      if (userStoreName) {
+      if (existingStore) {
         throw new HttpException('Já existe uma loja com esse nome.', HttpStatus.CONFLICT);
       }
 
