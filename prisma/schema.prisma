@@ -259,6 +259,7 @@ model UserStore {
   logoUrl               String?
   bannerUrl             String?
   rating                Int       @default(0)
+  ratingCount           Int       @default(0)
   totalSales            Int       @default(0)
   totalRevenue          Int       @default(0)
   isActive              Boolean   @default(true)
