@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { BadRequestException, HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { createClient } from '@supabase/supabase-js';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { StoreDataProps } from 'src/types/story-types';
@@ -60,7 +60,7 @@ export class StoreService {
       }
 
       // Upload do LOGO
-      const logoPath = `stores/logos/${Date.now()}-${logo.originalname}`;
+      const logoPath = `logos/${Date.now()}-${logo.originalname}`;
       const { data: logoUploadData, error: logoUploadError } =
         await this.supabase.storage
           .from('zanzar-images')
@@ -81,7 +81,7 @@ export class StoreService {
       const logoUrl = logoUrlData?.publicUrl;
 
       // Upload do BANNER
-      const bannerPath = `stores/banners/${Date.now()}-${banner.originalname}`;
+      const bannerPath = `banners/${Date.now()}-${banner.originalname}`;
       const { data: bannerUploadData, error: bannerUploadError } =
         await this.supabase.storage
           .from('zanzar-images')
@@ -108,7 +108,7 @@ export class StoreService {
         );
       }
 
-      const [createdAddress, createdStore] = await this.prisma.$transaction(async (tx) => {
+      const [createdAddress, createdStore, updatedProfile] = await this.prisma.$transaction(async (tx) => {
         let createdAddress = null;
 
         if (address) {
@@ -164,10 +164,15 @@ export class StoreService {
 
         const createdStore = await tx.userStore.create({ data: storeData });
 
-        return [createdAddress, createdStore];
+        const updatedProfile = await tx.profiles.update({
+          where: { id: profileId },
+          data: { hasUserStore: true },
+        });
+
+        return [createdAddress, createdStore, updatedProfile];
       });
 
-      return { createdAddress, createdStore };
+      return { createdAddress, createdStore, updatedProfile };
 
     } catch (error) {
       console.error(error);
@@ -177,4 +182,235 @@ export class StoreService {
       );
     }
   }
+
+  async getUserStore(slug: string, profileId: string) {
+    const store = await this.prisma.userStore.findFirst({
+      where: { slug },
+      include: {
+        address: true,
+      },
+    });
+
+    if (!store) {
+      throw new HttpException('Loja não encontrada.', HttpStatus.NOT_FOUND);
+    }
+
+    //se iguais está no próprio perfil, se n, visitando perfil de alguém
+    let isFavorited = false;
+
+    if (profileId !== store.profileId) {
+      const favoriteRelation = await this.prisma.favoriteStore.findFirst({
+        where: {
+          profileId: profileId,
+          storeId: store.id,
+        },
+      });
+      isFavorited = !!favoriteRelation;
+    }
+
+    // Generate signed URLs for logo and banner if present
+    let logoUrl = store.logoUrl;
+    let bannerUrl = store.bannerUrl;
+
+    if (logoUrl) {
+      const bucketPath = logoUrl.split('/zanzar-images/')[1];
+      const { data, error } = await this.supabase.storage
+        .from('zanzar-images')
+        .createSignedUrl(bucketPath, 3600);
+      if (!error && data?.signedUrl) {
+        logoUrl = data.signedUrl;
+      }
+    }
+
+    if (bannerUrl) {
+      const bucketPath = bannerUrl.split('/zanzar-images/')[1];
+      const { data, error } = await this.supabase.storage
+        .from('zanzar-images')
+        .createSignedUrl(bucketPath, 3600);
+      if (!error && data?.signedUrl) {
+        bannerUrl = data.signedUrl;
+      }
+    }
+
+    return {
+      ...store,
+      logoUrl,
+      bannerUrl,
+      isFavorited,
+    };
+  }
+
+  async updateBanner(profileId: string, bannerFile: Express.Multer.File, userStoreId: string) {
+    try {
+      if (!bannerFile) {
+        throw new BadRequestException('Nenhum arquivo de imagem enviado.');
+      }
+
+      const isOwner = await this.prisma.userStore.findFirst({
+        where: {
+          id: userStoreId,
+          profileId: profileId,
+        },
+      });
+
+      if (!isOwner) {
+        throw new BadRequestException('Como você conseguiu chegar até aqui?');
+      }
+
+      // Faz o upload (com upsert: true)
+      const { error: uploadError } = await this.supabase.storage
+        .from('zanzar-images')
+        .upload(`banners/${userStoreId}-banner.png`, bannerFile.buffer, {
+          cacheControl: '3600',
+          upsert: true,
+        });
+
+      if (uploadError) {
+        throw new BadRequestException(
+          `Erro ao fazer upload da imagem: ${uploadError.message}`,
+        );
+      }
+
+      // Gera a URL assinada válida por 1 hora
+      const { data: signedUrlData, error: signedUrlError } = await this.supabase.storage
+        .from('zanzar-images')
+        .createSignedUrl(`banners/${userStoreId}-banner.png`, 60 * 60); // 1 hora
+
+      if (signedUrlError || !signedUrlData?.signedUrl) {
+        throw new BadRequestException('Erro ao gerar URL assinada.');
+      }
+
+      const bannerUrl = signedUrlData.signedUrl;
+
+      // Atualiza a store com a URL do banner
+      await this.prisma.userStore.update({
+        where: { id: userStoreId },
+        data: { bannerUrl },
+      });
+
+      return bannerUrl;
+    } catch (error) {
+      console.error('Erro ao atualizar imagem de banner:', error);
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        message: error.message || 'Erro desconhecido',
+        error: 'Bad Request',
+      });
+    }
+  }
+
+
+  async updateLogo(profileId: string, logoFile: Express.Multer.File, userStoreId: string) {
+    try {
+      if (!logoFile) {
+        throw new BadRequestException('Nenhum arquivo de imagem enviado.');
+      }
+
+      const isOwner = await this.prisma.userStore.findFirst({
+        where: {
+          id: userStoreId,
+          profileId: profileId,
+        },
+      });
+
+      if (!isOwner) {
+        throw new BadRequestException('Como você conseguiu chegar até aqui?');
+      }
+
+      // Upload da imagem para o Supabase Storage com overwrite (upsert)
+      const { error: uploadError } = await this.supabase.storage
+        .from('zanzar-images')
+        .upload(`logos/${userStoreId}-logo.png`, logoFile.buffer, {
+          cacheControl: '3600',
+          upsert: true,
+        });
+
+      if (uploadError) {
+        throw new BadRequestException(
+          `Erro ao fazer upload da imagem: ${uploadError.message}`,
+        );
+      }
+
+      // Geração de URL assinada (válida por 1 hora)
+      const { data: signedUrlData, error: signedUrlError } = await this.supabase.storage
+        .from('zanzar-images')
+        .createSignedUrl(`logos/${userStoreId}-logo.png`, 60 * 60); // 1 hora
+
+      if (signedUrlError || !signedUrlData?.signedUrl) {
+        throw new BadRequestException('Erro ao gerar URL assinada.');
+      }
+
+      const logoUrl = signedUrlData.signedUrl;
+
+      // Atualiza a store com a nova logo
+      await this.prisma.userStore.update({
+        where: { id: userStoreId },
+        data: { logoUrl },
+      });
+
+      return { logoUrl };
+    } catch (error) {
+      console.error('Erro ao atualizar imagem de logo:', error);
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        message: error.message || 'Erro desconhecido',
+        error: 'Bad Request',
+      });
+    }
+  }
+
+  async toFavoriteStore(profileId: string, storeId: string) {
+    try {
+      const favoriteRelation = await this.prisma.favoriteStore.findFirst({
+        where: {
+          profileId,
+          storeId,
+        },
+      });
+
+      if (favoriteRelation) {
+        await this.prisma.favoriteStore.delete({
+          where: {
+            id: favoriteRelation.id,
+          },
+        });
+
+        await this.prisma.userStore.update({
+          where: { id: storeId },
+          data: {
+            totalFavoriters: {
+              decrement: 1,
+            },
+          },
+        })
+
+      } else {
+        await this.prisma.favoriteStore.create({
+          data: {
+            profileId,
+            storeId,
+          },
+        });
+
+        await this.prisma.userStore.update({
+          where: { id: storeId },
+          data: {
+            totalFavoriters: {
+              increment: 1,
+            },
+          },
+        })
+      }
+
+    } catch (error) {
+      console.error('Erro ao favoritar loja:', error);
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        message: error.message || 'Erro desconhecido',
+        error: 'Bad Request',
+      });
+    }
+  }
 }
+
+
