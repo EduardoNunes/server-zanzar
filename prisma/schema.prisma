@@ -74,7 +74,7 @@ model Profiles {
   following        Followers[]        @relation("FollowingRelation")
   sentMessages     DirectMessages[]   @relation("Sender")
   receivedMessages DirectMessages[]   @relation("Receiver")
-  adViews          AdViews[] // Relacionamento com AdViews
+  adViews          AdViews[]
   user             User               @relation(fields: [userId], references: [id])
   chatParticipants ChatParticipants[]
   chatMessages     ChatMessages[]
@@ -91,10 +91,12 @@ model Profiles {
   invites     Int      @default(0)
 
   categories Categories[] // Relação 1 para N com Categories
+  favoriteStores FavoriteStore[]
 
   addressId   String?   @unique
   address     Address?  @relation(fields: [addressId], references: [id])
   userStore       UserStore?
+
 }
 
 model Address {
@@ -260,11 +262,13 @@ model UserStore {
   bannerUrl             String?
   rating                Int       @default(0)
   ratingCount           Int       @default(0)
+  totalFavoriters       Int       @default(0)
+  totalProducts         Int       @default(0)
   totalSales            Int       @default(0)
   totalRevenue          Int       @default(0)
   isActive              Boolean   @default(true)
   createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  updatedAt             DateTime  @updatedAt  
 
   lastSubscriptionPayment DateTime?  // Última mensalidade paga
   subscriptionAmount       Int?      // Valor da mensalidade (em centavos, se for tipo currency)
@@ -273,6 +277,7 @@ model UserStore {
   profile               Profiles  @relation(fields: [profileId], references: [id])
   address               Address?  @relation("StoreAddress", fields: [addressId], references: [id])
   products              Product[]
+  favoritedBy      FavoriteStore[]
 }
 
 model Product {
@@ -312,4 +317,16 @@ model ProductImage {
   url        String
   productId  Int
   product    Product @relation(fields: [productId], references: [id])
+}
+
+model FavoriteStore {
+  id         String     @id @default(uuid())
+  profileId  String
+  storeId    String
+  createdAt  DateTime   @default(now())
+
+  profile    Profiles   @relation(fields: [profileId], references: [id])
+  store      UserStore  @relation(fields: [storeId], references: [id])
+
+  @@unique([profileId, storeId])
 }
