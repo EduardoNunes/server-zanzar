@@ -16,7 +16,7 @@ export class ProfileService {
     process.env.SUPABASE_KEY,
   );
 
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   async getProfile(username: string, token: string) {
     try {
@@ -34,13 +34,20 @@ export class ProfileService {
 
       const currentUserProfile = await this.prisma.profiles.findUnique({
         where: { username },
+        include: {
+          userStore: {
+            select: {
+              slug: true,
+            },
+          },
+        },
       });
 
       if (!currentUserProfile) {
         throw new BadRequestException('Perfil não encontrado.');
       }
 
-      //se iguais está no próprio perfil, se n visitando perfil de alguém
+      //se iguais está no próprio perfil, se n, visitando perfil de alguém
       let isFollowed = false;
 
       if (userProfile.id !== currentUserProfile.id) {
@@ -85,6 +92,7 @@ export class ProfileService {
         followingCount: currentUserProfile.followingCount,
         totalPosts: currentUserProfile.totalPosts,
         hasUserStore: currentUserProfile.hasUserStore,
+        storeSlug: currentUserProfile.userStore?.slug,
       };
     } catch (error) {
       throw new BadRequestException({
