@@ -19,6 +19,7 @@ import { AdModalModule } from './ad-modal/ad-modal.module';
 import { InviteModule } from './invite/invite.module';
 import { InviteManagementModule } from './invite-management/invite-management.module';
 import { StoreModule } from './store/store.module';
+import { ProductModule } from './product/product.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { StoreModule } from './store/store.module';
     InviteModule,
     InviteManagementModule,
     StoreModule,
+    ProductModule,
   ],
   controllers: [AppController, ChatController],
   providers: [AppService, ChatService],

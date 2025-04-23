@@ -11,7 +11,7 @@ async function bootstrap() {
     origin: [
       'https://zanzar.netlify.app', 
       null, 
-      //'http://localhost:3000',
+      'http://localhost:3000',
     ],
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],
