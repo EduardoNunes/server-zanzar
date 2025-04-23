@@ -100,7 +100,6 @@ export class InviteService {
   }
 
   async handleGetUnreadInvites(client: any, profileId: string) {
-    console.log('PROFILEID', profileId);
     const { invites } = await this.prisma.profiles.findUnique({
       where: {
         id: profileId,
