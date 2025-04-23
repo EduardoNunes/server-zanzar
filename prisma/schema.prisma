@@ -284,7 +284,6 @@ model Product {
   id                Int               @id @default(autoincrement())
   name              String
   description       String
-  basePrice         Int
   userStoreId       String?
   userStore         UserStore?        @relation(fields: [userStoreId], references: [id])
   productCategoryId Int
@@ -305,6 +304,7 @@ model ProductVariant {
   size       String
   stock      Int
   price      Int
+  basePrice  Int
   productId  Int
   product    Product @relation(fields: [productId], references: [id])
   images     ProductImage[]
