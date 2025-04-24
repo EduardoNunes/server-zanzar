@@ -1,6 +1,9 @@
 import {
+  Body,
   Controller,
+  Get,
   Post,
+  Query,
   Req,
   UploadedFiles,
   UseGuards,
@@ -9,11 +12,12 @@ import {
 import { AnyFilesInterceptor } from '@nestjs/platform-express';
 import { Request } from 'express';
 import { JwtAuthGuard } from 'src/auth/guard/JwtAuthGuard';
+import { ProductService } from './product.service';
 
 @Controller('product')
 @UseGuards(JwtAuthGuard)
 export class ProductController {
-  constructor() {}
+  constructor(private readonly productService: ProductService) { }
 
   @Post('add-product')
   @UseInterceptors(AnyFilesInterceptor())
@@ -25,6 +29,31 @@ export class ProductController {
 
     // Remove prototype null para garantir compatibilidade
     const body = JSON.parse(JSON.stringify(rawBody));
+    const { name, description, selectedCategory, selectedSubCategory, profileId, userStoreId } = body;
+
+    if (!name) {
+      throw new Error('Informe um nome para o produto');
+    }
+
+    if (!description) {
+      throw new Error('Informe uma descrição para o produto');
+    }
+
+    if (!selectedCategory) {
+      throw new Error('Selecione uma categoria');
+    }
+
+    if (!selectedSubCategory) {
+      throw new Error('Selecione uma subcategoria');
+    }
+
+    if (!userStoreId) {
+      throw new Error('Tem algo errado com a identificação da loja, entre em contato com um adm.');
+    }
+
+    if (!body.variants || body.variants.length === 0) {
+      throw new Error('Pelo menos uma variante deve ser informada');
+    }
 
     // Trata variants que podem chegar como array ou string
     let variantsRaw: any[] = [];
@@ -54,29 +83,56 @@ export class ProductController {
     // Monta array final de variants com as imagens associadas
     const variants: any[] = Array.isArray(variantsRaw)
       ? variantsRaw.map((variant, index) => ({
-          color: variant.color,
-          price: parseFloat(variant.price),
-          size: variant.size,
-          stock: parseInt(variant.stock, 10),
-          images: imagesByField[`variants[${index}][images][]`] || [],
-        }))
+        color: variant.color,
+        price: parseFloat(variant.price),
+        size: variant.size,
+        stock: parseInt(variant.stock, 10),
+        images: imagesByField[`variants[${index}][images][]`] || [],
+      }))
       : [];
 
-    // Debug
-    console.log(
-      'VARIANTS COM IMAGENS FORMATADAS:',
-      variants.map((v) => ({
-        ...v,
-        images: v.images.map((img) => img.originalname),
-      })),
-    );
+    return this.productService.createProduct({
+      name,
+      description,
+      selectedCategory,
+      selectedSubCategory,
+      profileId,
+      userStoreId,
+      variants,
+    });
+  }
 
-    return {
-      message: 'Product added successfully',
-      product: {
-        ...body,
-        variants,
-      },
-    };
+  @Get('load-categories')
+  async loadCategories() {
+    return this.productService.loadCategories();
+  }
+
+  @Post('create-category')
+  async createCategory(
+    @Body('newCategory') newCategory: string,
+  ) {
+    if (!newCategory) {
+      throw new Error('O campo newCategory é obrigatórios.');
+    }
+
+    return this.productService.createCategory(newCategory);
+  }
+
+  @Get('load-sub-categories')
+  async loadSubCategories(
+    @Query('categoryId') categoryId: string) {
+    return this.productService.loadSubCategories(categoryId);
+  }
+
+  @Post('create-sub-category')
+  async createSubCategory(
+    @Body('newSubCategory') newSubCategory: string,
+    @Body('categoryId') categoryId: string,
+  ) {
+    if (!newSubCategory || !categoryId) {
+      throw new Error('Os campos newSubCategory e categoryId são obrigatórios.');
+    }
+
+    return this.productService.createSubCategory(newSubCategory, categoryId);
   }
 }
