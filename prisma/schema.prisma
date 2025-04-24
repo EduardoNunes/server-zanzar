@@ -281,47 +281,51 @@ model UserStore {
 }
 
 model Product {
-  id                   Int                 @id @default(autoincrement())
+  id                   String              @id @default(uuid())
   name                 String
   description          String
   userStoreId          String?
   userStore            UserStore?          @relation(fields: [userStoreId], references: [id])
-  productSubCategoryId Int
+  productSubCategoryId String
   productSubCategory   ProductSubCategory  @relation(fields: [productSubCategoryId], references: [id])
   variations           ProductVariant[]
 }
 
 model ProductCategory {
-  id              Int                  @id @default(autoincrement())
+  id              String               @id @default(uuid())
   name            String
-  subcategories   ProductSubCategory[] // Uma categoria pode ter várias subcategorias
+  normalizedName  String               @unique
+  subcategories   ProductSubCategory[]
 }
 
 model ProductSubCategory {
-  id                Int              @id @default(autoincrement())
-  name              String
-  categoryId        Int
-  category          ProductCategory  @relation(fields: [categoryId], references: [id])
-  products          Product[]        // Subcategoria pode ter vários produtos
+  id              String           @id @default(uuid())
+  name            String
+  normalizedName  String
+  categoryId      String
+  category        ProductCategory  @relation(fields: [categoryId], references: [id])
+  products        Product[]
+
+  @@unique([normalizedName, categoryId])
 }
 
 model ProductVariant {
-  id         Int     @id @default(autoincrement())
-  sku        String  @unique
+  id         String        @id @default(uuid())
+  sku        String        @unique
   color      String
   size       String
   stock      Int
   price      Int
   basePrice  Int
-  productId  Int
-  product    Product @relation(fields: [productId], references: [id])
+  productId  String
+  product    Product       @relation(fields: [productId], references: [id])
   images     ProductImage[]
 }
 
 model ProductImage {
-  id             Int             @id @default(autoincrement())
+  id             String          @id @default(uuid())
   url            String
-  variantId      Int             // ← chave estrangeira nova
+  variantId      String
   variant        ProductVariant  @relation(fields: [variantId], references: [id])
 }
 
