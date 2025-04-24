@@ -64,7 +64,7 @@ export class ProfileService {
 
       if (avatarUrl) {
         const bucketPath = avatarUrl.replace(
-          'https://livpgjkudsvjcvapfcjq.supabase.co/storage/v1/object/public/',
+          `${process.env.SUPABASE_URL}/storage/v1/object/public/`,
           '',
         );
 
@@ -204,7 +204,7 @@ export class ProfileService {
             }
 
             const bucketPath = post.mediaUrl.replace(
-              'https://livpgjkudsvjcvapfcjq.supabase.co/storage/v1/object/public/zanzar-images/',
+              `${process.env.SUPABASE_URL}/storage/v1/object/public/zanzar-images/`,
               '',
             );
 
@@ -327,7 +327,7 @@ export class ProfileService {
             }
 
             const bucketPath = post.mediaUrl.replace(
-              'https://livpgjkudsvjcvapfcjq.supabase.co/storage/v1/object/public/zanzar-images/',
+              `${process.env.SUPABASE_URL}/storage/v1/object/public/zanzar-images/`,
               '',
             );
 
@@ -397,7 +397,7 @@ export class ProfileService {
         );
       }
 
-      const avatarUrl = `https://livpgjkudsvjcvapfcjq.supabase.co/storage/v1/object/public/avatars/${profileId}-avatar.png`;
+      const avatarUrl = `${process.env.SUPABASE_URL}/storage/v1/object/public/avatars/${profileId}-avatar.png`;
 
       await this.prisma.profiles.update({
         where: { id: profileId },

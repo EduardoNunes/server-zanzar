@@ -43,7 +43,7 @@ export class AdvertisementsManagementService {
 
           if (ad.mediaUrl) {
             const mediaPath = ad.mediaUrl.replace(
-              'https://livpgjkudsvjcvapfcjq.supabase.co/storage/v1/object/public/zanzar-images/',
+              `${process.env.SUPABASE_URL}/storage/v1/object/public/zanzar-images/`,
               '',
             );
             const { data, error } = await this.supabase.storage

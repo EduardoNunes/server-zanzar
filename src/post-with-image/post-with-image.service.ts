@@ -164,7 +164,7 @@ export class PostsService {
 
             if (post.mediaUrl) {
               const mediaPath = post.mediaUrl.replace(
-                'https://livpgjkudsvjcvapfcjq.supabase.co/storage/v1/object/public/zanzar-images/',
+                `${process.env.SUPABASE_URL}/storage/v1/object/public/zanzar-images/`,
                 '',
               );
               const { data, error } = await this.supabase.storage
@@ -182,7 +182,7 @@ export class PostsService {
 
             if (post.profile.avatarUrl) {
               const avatarPath = post.profile.avatarUrl.replace(
-                'https://livpgjkudsvjcvapfcjq.supabase.co/storage/v1/object/public/',
+                `${process.env.SUPABASE_URL}/storage/v1/object/public/`,
                 '',
               );
               const { data, error } = await this.supabase.storage
@@ -532,7 +532,7 @@ export class PostsService {
 
       if (post.mediaUrl) {
         const mediaPath = post.mediaUrl.replace(
-          'https://livpgjkudsvjcvapfcjq.supabase.co/storage/v1/object/public/zanzar-images/',
+          `${process.env.SUPABASE_URL}/storage/v1/object/public/zanzar-images/`,
           '',
         );
         const { data: mediaData, error: mediaError } =
@@ -552,7 +552,7 @@ export class PostsService {
 
       if (post.profile.avatarUrl) {
         const avatarPath = post.profile.avatarUrl.replace(
-          'https://livpgjkudsvjcvapfcjq.supabase.co/storage/v1/object/public/',
+          `${process.env.SUPABASE_URL}/storage/v1/object/public/`,
           '',
         );
         const { data: avatarData, error: avatarError } =

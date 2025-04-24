@@ -81,7 +81,7 @@ export class ChatService {
 
         if (avatarUrl) {
           const bucketPath = avatarUrl.replace(
-            'https://livpgjkudsvjcvapfcjq.supabase.co/storage/v1/object/public/',
+            `${process.env.SUPABASE_URL}/storage/v1/object/public/`,
             '',
           );
 
@@ -246,7 +246,7 @@ export class ChatService {
 
               if (avatarUrl) {
                 const bucketPath = avatarUrl.replace(
-                  'https://livpgjkudsvjcvapfcjq.supabase.co/storage/v1/object/public/',
+                  `${process.env.SUPABASE_URL}/storage/v1/object/public/`,
                   '',
                 );
 
@@ -326,9 +326,10 @@ export class ChatService {
           if (avatarUrl) {
             try {
               const bucketPath = avatarUrl.replace(
-                'https://livpgjkudsvjcvapfcjq.supabase.co/storage/v1/object/public/',
+                `${process.env.SUPABASE_URL}/storage/v1/object/public/`,
                 '',
               );
+
               const { data, error } = await this.supabase.storage
                 .from('zanzar-images')
                 .createSignedUrl(bucketPath, 86400);
@@ -386,7 +387,7 @@ export class ChatService {
     // Gerar URL assinada para o avatar, se existir.
     if (profile.avatarUrl) {
       const bucketPath = profile.avatarUrl.replace(
-        'https://livpgjkudsvjcvapfcjq.supabase.co/storage/v1/object/public/',
+        `${process.env.SUPABASE_URL}/storage/v1/object/public/`,
         '',
       );
 

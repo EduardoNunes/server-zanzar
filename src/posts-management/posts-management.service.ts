@@ -100,7 +100,7 @@ export class PostsManagementService {
 
           if (post.mediaUrl) {
             const mediaPath = post.mediaUrl.replace(
-              'https://livpgjkudsvjcvapfcjq.supabase.co/storage/v1/object/public/zanzar-images/',
+              `${process.env.SUPABASE_URL}/storage/v1/object/public/zanzar-images/`,
               '',
             );
             const { data, error } = await this.supabase.storage
