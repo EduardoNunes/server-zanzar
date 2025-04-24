@@ -281,20 +281,28 @@ model UserStore {
 }
 
 model Product {
-  id                Int               @id @default(autoincrement())
-  name              String
-  description       String
-  userStoreId       String?
-  userStore         UserStore?        @relation(fields: [userStoreId], references: [id])
-  productCategoryId Int
-  productCategory   ProductCategory   @relation(fields: [productCategoryId], references: [id])
-  variations        ProductVariant[]
+  id                   Int                 @id @default(autoincrement())
+  name                 String
+  description          String
+  userStoreId          String?
+  userStore            UserStore?          @relation(fields: [userStoreId], references: [id])
+  productSubCategoryId Int
+  productSubCategory   ProductSubCategory  @relation(fields: [productSubCategoryId], references: [id])
+  variations           ProductVariant[]
 }
 
 model ProductCategory {
-  id        Int       @id @default(autoincrement())
-  name      String
-  products  Product[]
+  id              Int                  @id @default(autoincrement())
+  name            String
+  subcategories   ProductSubCategory[] // Uma categoria pode ter várias subcategorias
+}
+
+model ProductSubCategory {
+  id                Int              @id @default(autoincrement())
+  name              String
+  categoryId        Int
+  category          ProductCategory  @relation(fields: [categoryId], references: [id])
+  products          Product[]        // Subcategoria pode ter vários produtos
 }
 
 model ProductVariant {
