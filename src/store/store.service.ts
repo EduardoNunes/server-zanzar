@@ -149,8 +149,8 @@ export class StoreService {
           ratingCount: 0,
           totalRevenue: 0,
           isActive: false,
-          productFeePercentage: 2,
-          subscriptionAmount: 2000,
+          productFeePercentage: 5,
+          subscriptionAmount: 3000,
           profile: {
             connect: { id: profileId },
           },
