@@ -280,12 +280,27 @@ model UserStore {
   favoritedBy      FavoriteStore[]
 }
 
+model FavoriteStore {
+  id         String     @id @default(uuid())
+  profileId  String
+  storeId    String
+  createdAt  DateTime   @default(now())
+
+  profile    Profiles   @relation(fields: [profileId], references: [id])
+  store      UserStore  @relation(fields: [storeId], references: [id])
+
+  @@unique([profileId, storeId])
+}
+
 model Product {
   id                   String              @id @default(uuid())
   name                 String
   description          String
-  userStoreId          String?
-  userStore            UserStore?          @relation(fields: [userStoreId], references: [id])
+  totalSold            Int                 @default(0)
+  rating               Int                 @default(0)
+  ratingCount          Int                 @default(0)
+  userStoreId          String
+  userStore            UserStore           @relation(fields: [userStoreId], references: [id])
   productSubCategoryId String
   productSubCategory   ProductSubCategory  @relation(fields: [productSubCategoryId], references: [id])
   variations           ProductVariant[]
@@ -311,32 +326,32 @@ model ProductSubCategory {
 
 model ProductVariant {
   id         String        @id @default(uuid())
-  sku        String        @unique
-  color      String
-  size       String
-  stock      Int
-  price      Int
-  basePrice  Int
+  colorName  String
+  colorCode  String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   productId  String
+
   product    Product       @relation(fields: [productId], references: [id])
   images     ProductImage[]
+  sizes      ProductVariantSize[]
+}
+
+model ProductVariantSize {
+  id          String    @id @default(uuid())
+  variantId   String
+  size        String
+  stock       Int
+  price       Int
+  basePrice   Int
+
+  variant     ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
 }
 
 model ProductImage {
   id             String          @id @default(uuid())
   url            String
   variantId      String
+  position       Int
   variant        ProductVariant  @relation(fields: [variantId], references: [id])
-}
-
-model FavoriteStore {
-  id         String     @id @default(uuid())
-  profileId  String
-  storeId    String
-  createdAt  DateTime   @default(now())
-
-  profile    Profiles   @relation(fields: [profileId], references: [id])
-  store      UserStore  @relation(fields: [storeId], references: [id])
-
-  @@unique([profileId, storeId])
 }
