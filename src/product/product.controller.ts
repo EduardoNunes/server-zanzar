@@ -102,6 +102,15 @@ export class ProductController {
     });
   }
 
+  @Get('load-products')
+  async loadProducts(
+    @Query('storeSlug') userStoreId: string,
+    @Query('page') page: number,
+    @Query('profileId') profileId: string,
+  ) {
+    return this.productService.loadProducts(userStoreId, page);
+  }
+
   @Get('load-categories')
   async loadCategories() {
     return this.productService.loadCategories();

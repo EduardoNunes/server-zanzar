@@ -63,7 +63,15 @@ export class ProductService {
         const uploadedImages = [];
 
         for (const image of variant.images) {
-          const filename = `products/${Date.now()}-${image.originalname}`;
+          const sanitizeFilename = (filename: string): string => {
+            let sanitized = filename.normalize("NFD").replace(/[\u0000-\u001F\u007F-\u009F]/g, ""); // remove chars de controle
+            sanitized = sanitized.replace(/[\u0300-\u036f]/g, ""); // remove acentos
+            sanitized = sanitized.replace(/[^a-zA-Z0-9.\-_]/g, ""); // remove chars não permitidos
+            sanitized = sanitized.replace(/\s+/g, "-"); // espaços por hífen
+            return sanitized;
+          };
+          const safeName = sanitizeFilename(image.originalname);
+          const filename = `products/${Date.now()}-${safeName}`;
           const { data: uploadData, error } =
             await this.supabase.storage
               .from('zanzar-images')
@@ -119,8 +127,19 @@ export class ProductService {
           }
         }
 
+        // Incrementa 1 no totalProducts da tabela UserStore
+        await tx.userStore.update({
+          where: { id: userStoreId },
+          data: {
+            totalProducts: {
+              increment: 1,
+            },
+          },
+        });
+
         return { message: 'Produto criado com sucesso' };
       });
+
 
     } catch (error) {
       // ⬇️ Rollback manual: remove imagens do Supabase se algo falhar
@@ -134,6 +153,57 @@ export class ProductService {
     }
   }
 
+  async loadProducts(userStoreId: string, page: number) {
+    try {
+      const products = await this.prisma.product.findMany({
+        where: {
+          userStoreId,
+        },
+        include: {
+          variations: {
+            include: {
+              images: true,
+            },
+          },
+          productSubCategory: {
+            include: {
+              category: true,
+            },
+          }
+        },
+        skip: (page - 1) * 10,
+        take: 10,
+      });
+
+      // Gerar URLs assinadas para imagens das variações
+      for (const product of products) {
+        for (const variant of product.variations) {
+          if (variant.images && Array.isArray(variant.images)) {
+            for (const image of variant.images) {
+              if (image.url) {
+                // Corrige o bucketPath para pegar apenas o path relativo ao bucket
+                const bucketPath = image.url.replace(`${process.env.SUPABASE_URL}/storage/v1/object/public/zanzar-images/`, '');
+                const { data, error } = await this.supabase.storage
+                  .from('zanzar-images')
+                  .createSignedUrl(bucketPath, 3600);
+                if (!error && data?.signedUrl) {
+                  image.url = data.signedUrl;
+                }
+              }
+            }
+          }
+        }
+      }
+
+      return products;
+    } catch (error) {
+      console.error(`Erro ao carregar produtos:`, error);
+      throw new HttpException(
+        'Erro ao carregar produtos. Por favor, tente novamente.',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
 
   async loadCategories() {
     try {
