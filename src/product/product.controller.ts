@@ -31,21 +31,28 @@ export class ProductController {
     const variants = Array.isArray(rawBody.variants) ? rawBody.variants : [rawBody.variants];
 
     // Associa arquivos enviados via multipart às imagens (se necessário)
+    // Novo: Cria array auxiliar de metadados de imagens (position)
+    const variantsImageMeta = [];
     variants.forEach((variant, vIdx) => {
+      const metaArr = [];
       if (variant.images && Array.isArray(variant.images)) {
         variant.images = variant.images.map((img, imgIdx) => {
-          // Se o campo 'file' for uma string (nome do campo), procure no files[]
-          if (img.file && typeof img.file === 'string') {
-            const fileObj = files.find(f => f.fieldname === `variants[${vIdx}][images][${imgIdx}]`);
-            return {
-              ...img,
-              file: fileObj || img.file,
-            };
+          // Salva o position do metadado
+          metaArr.push({ position: img.position });
+          // Se já for um arquivo válido (do multer), retorna ele
+          if (img && typeof img === 'object' && img.buffer) {
+            return img;
           }
-          // Se já for um objeto file, mantém
-          return img;
+          // Se img.file for um arquivo válido (do multer), retorna ele
+          if (img.file && typeof img.file === 'object' && img.file.buffer) {
+            return img.file;
+          }
+          // Se não, tenta encontrar no files[] pelo fieldname
+          const fileObj = files.find(f => f.fieldname === `variants[${vIdx}][images][${imgIdx}]`);
+          return fileObj;
         });
       }
+      variantsImageMeta.push(metaArr);
     });
 
     const product = {
@@ -56,6 +63,7 @@ export class ProductController {
       profileId: rawBody.profileId,
       userStoreId: rawBody.userStoreId,
       variants,
+      variantsImageMeta, // Novo campo
     };
 
     return this.productService.createProduct(product);

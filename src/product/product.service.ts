@@ -30,6 +30,7 @@ export class ProductService {
       }[];
       images: Express.Multer.File[];
     }[];
+    variantsImageMeta: { position: number }[][];
   }) {
     const {
       name,
@@ -64,7 +65,8 @@ export class ProductService {
 
     try {
       // Upload de imagens antes da transação
-      for (const variant of variants) {
+      for (let vIdx = 0; vIdx < variants.length; vIdx++) {
+        const variant = variants[vIdx];
         const uploadedImages = [];
         for (const image of variant.images) {
           const { data: uploadData, error } = await this.supabase.storage
@@ -80,12 +82,12 @@ export class ProductService {
           uploadedFilePaths.push(uploadData.path); // ← salva path para rollback
         }
 
-        // Associa cada url ao respectivo objeto de imagem
+        // Associa cada url ao respectivo objeto de imagem e inclui o metadado position
         const imagesWithUrls = (variant.images || []).map((img, idx) => ({
           ...img,
           url: uploadedImages[idx],
+          position: product.variantsImageMeta?.[vIdx]?.[idx]?.position ?? idx,
         }));
-
         preparedVariants.push({ ...variant, images: imagesWithUrls });
       }
 
@@ -106,7 +108,6 @@ export class ProductService {
             },
           },
         });
-
         for (const variant of preparedVariants) {
           const createdVariant = await tx.productVariant.create({
             data: {
@@ -175,6 +176,7 @@ export class ProductService {
           variations: {
             include: {
               images: true,
+              sizes: true,
             },
           },
           productSubCategory: {
@@ -194,7 +196,9 @@ export class ProductService {
             for (const image of variant.images) {
               if (image.url) {
                 // Corrige o bucketPath para pegar apenas o path relativo ao bucket
-                const bucketPath = image.url.replace(`${process.env.SUPABASE_URL}/storage/v1/object/public/zanzar-images/`, '');
+                let bucketPath = image.url.replace(`${process.env.SUPABASE_URL}/storage/v1/object/public/zanzar-images/`, '');
+                // Remove barra inicial, se houver
+                if (bucketPath.startsWith('/')) bucketPath = bucketPath.slice(1);
                 const { data, error } = await this.supabase.storage
                   .from('zanzar-images')
                   .createSignedUrl(bucketPath, 3600);
