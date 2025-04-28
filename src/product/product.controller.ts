@@ -27,79 +27,38 @@ export class ProductController {
   ) {
     const rawBody = req.body;
 
-    // Remove prototype null para garantir compatibilidade
-    const body = JSON.parse(JSON.stringify(rawBody));
-    const { name, description, selectedCategory, selectedSubCategory, profileId, userStoreId } = body;
+    // variants já está estruturado como array de objetos
+    const variants = Array.isArray(rawBody.variants) ? rawBody.variants : [rawBody.variants];
 
-    if (!name) {
-      throw new Error('Informe um nome para o produto');
-    }
-
-    if (!description) {
-      throw new Error('Informe uma descrição para o produto');
-    }
-
-    if (!selectedCategory) {
-      throw new Error('Selecione uma categoria');
-    }
-
-    if (!selectedSubCategory) {
-      throw new Error('Selecione uma subcategoria');
-    }
-
-    if (!userStoreId) {
-      throw new Error('Tem algo errado com a identificação da loja, entre em contato com um adm.');
-    }
-
-    if (!body.variants || body.variants.length === 0) {
-      throw new Error('Pelo menos uma variante deve ser informada');
-    }
-
-    // Trata variants que podem chegar como array ou string
-    let variantsRaw: any[] = [];
-
-    if (Array.isArray(body.variants)) {
-      variantsRaw = body.variants;
-    } else if (typeof body.variants === 'string') {
-      try {
-        variantsRaw = JSON.parse(body.variants);
-      } catch (err) {
-        console.error('Erro ao parsear "variants":', err);
-        return { message: 'Formato inválido para variants' };
+    // Associa arquivos enviados via multipart às imagens (se necessário)
+    variants.forEach((variant, vIdx) => {
+      if (variant.images && Array.isArray(variant.images)) {
+        variant.images = variant.images.map((img, imgIdx) => {
+          // Se o campo 'file' for uma string (nome do campo), procure no files[]
+          if (img.file && typeof img.file === 'string') {
+            const fileObj = files.find(f => f.fieldname === `variants[${vIdx}][images][${imgIdx}]`);
+            return {
+              ...img,
+              file: fileObj || img.file,
+            };
+          }
+          // Se já for um objeto file, mantém
+          return img;
+        });
       }
-    }
-
-    // Agrupa arquivos por fieldname
-    const imagesByField: { [key: string]: Express.Multer.File[] } = {};
-    if (Array.isArray(files)) {
-      for (const file of files) {
-        if (!imagesByField[file.fieldname]) {
-          imagesByField[file.fieldname] = [];
-        }
-        imagesByField[file.fieldname].push(file);
-      }
-    }
-
-    // Monta array final de variants com as imagens associadas
-    const variants: any[] = Array.isArray(variantsRaw)
-      ? variantsRaw.map((variant, index) => ({
-        color: variant.color,
-        price: parseFloat(variant.price),
-        size: variant.size,
-        stock: parseInt(variant.stock, 10),
-        images: imagesByField[`variants[${index}][images][]`] || [],
-      }))
-      : [];
-
-    return this.productService.createProduct({
-      name,
-      description,
-      selectedCategory,
-      selectedSubCategory,
-      profileId,
-      userStoreId,
-      variants,
     });
+
+    const product = {
+      name: rawBody.name,
+      description: rawBody.description,
+      selectedCategory: rawBody.selectedCategory,
+      selectedSubCategory: rawBody.selectedSubCategory,
+      profileId: rawBody.profileId,
+      userStoreId: rawBody.userStoreId,
+      variants,
+    };
+
+    return this.productService.createProduct(product);
   }
 
   @Get('load-products')

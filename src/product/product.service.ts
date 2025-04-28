@@ -11,7 +11,7 @@ export class ProductService {
 
   constructor(private prisma: PrismaService) { }
 
-  async createProduct(data: {
+  async createProduct(product: {
     name: string;
     description: string;
     selectedCategory: string;
@@ -19,10 +19,15 @@ export class ProductService {
     profileId: string;
     userStoreId: string;
     variants: {
-      color: string;
-      price: number;
-      size: string;
-      stock: number;
+      colorName: string;
+      colorCode: string;
+      sizes: {
+        size: string;
+        stock: number;
+        basePrice: number;
+        price: number;
+        position: number;
+      }[];
       images: Express.Multer.File[];
     }[];
   }) {
@@ -33,7 +38,7 @@ export class ProductService {
       selectedSubCategory,
       userStoreId,
       variants,
-    } = data;
+    } = product;
 
     // Validação de categoria e subcategoria
     const category = await this.prisma.productCategory.findUnique({
@@ -58,26 +63,15 @@ export class ProductService {
     const uploadedFilePaths: string[] = [];
 
     try {
-      // ⬇️ Upload de imagens antes da transação
+      // Upload de imagens antes da transação
       for (const variant of variants) {
         const uploadedImages = [];
-
         for (const image of variant.images) {
-          const sanitizeFilename = (filename: string): string => {
-            let sanitized = filename.normalize("NFD").replace(/[\u0000-\u001F\u007F-\u009F]/g, ""); // remove chars de controle
-            sanitized = sanitized.replace(/[\u0300-\u036f]/g, ""); // remove acentos
-            sanitized = sanitized.replace(/[^a-zA-Z0-9.\-_]/g, ""); // remove chars não permitidos
-            sanitized = sanitized.replace(/\s+/g, "-"); // espaços por hífen
-            return sanitized;
-          };
-          const safeName = sanitizeFilename(image.originalname);
-          const filename = `products/${Date.now()}-${safeName}`;
-          const { data: uploadData, error } =
-            await this.supabase.storage
-              .from('zanzar-images')
-              .upload(filename, image.buffer, {
-                contentType: image.mimetype,
-              });
+          const { data: uploadData, error } = await this.supabase.storage
+            .from('zanzar-images')
+            .upload(`product/${userStoreId}-${product.name}-${Date.now()}`, image.buffer, {
+              contentType: image.mimetype,
+            });
 
           if (error) throw new Error(`Erro ao enviar imagem: ${error.message}`);
 
@@ -86,7 +80,13 @@ export class ProductService {
           uploadedFilePaths.push(uploadData.path); // ← salva path para rollback
         }
 
-        preparedVariants.push({ ...variant, uploadedImages });
+        // Associa cada url ao respectivo objeto de imagem
+        const imagesWithUrls = (variant.images || []).map((img, idx) => ({
+          ...img,
+          url: uploadedImages[idx],
+        }));
+
+        preparedVariants.push({ ...variant, images: imagesWithUrls });
       }
 
       // ⬇️ Transação para salvar produto e variantes
@@ -95,6 +95,9 @@ export class ProductService {
           data: {
             name,
             description,
+            rating: 0,
+            ratingCount: 0,
+            totalSold: 0,
             userStore: {
               connect: { id: userStoreId },
             },
@@ -108,20 +111,29 @@ export class ProductService {
           const createdVariant = await tx.productVariant.create({
             data: {
               productId: product.id,
-              color: variant.color,
-              size: variant.size,
-              price: variant.price,
-              stock: variant.stock,
-              basePrice: variant.price * (1 + (userStore.productFeePercentage || 0) / 100),
-              sku: `${product.id}-${variant.color}-${variant.size}`.toLowerCase(),
+              colorName: variant.colorName,
+              colorCode: variant.colorCode,
             },
           });
 
-          for (const imageUrl of variant.uploadedImages) {
+          for (const size of variant.sizes) {
+            const createVariantSize = await tx.productVariantSize.create({
+              data: {
+                variantId: createdVariant.id,
+                size: size.size,
+                stock: Number(size.stock),
+                price: Number(size.price),
+                basePrice: Number(size.basePrice),
+              },
+            });
+          }
+
+          for (const image of variant.images) {
             await tx.productImage.create({
               data: {
                 variantId: createdVariant.id,
-                url: imageUrl,
+                url: image.url,
+                position: Number(image.position),
               },
             });
           }
