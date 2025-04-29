@@ -208,8 +208,8 @@ export class ProductService {
               },
             }
           },
-          skip: (page - 1) * 10,
-          take: 10,
+          skip: (page - 1) * 6,
+          take: 6,
         });
 
         // Gerar URLs assinadas para imagens das variações
