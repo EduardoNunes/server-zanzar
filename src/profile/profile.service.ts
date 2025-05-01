@@ -16,7 +16,7 @@ export class ProfileService {
     process.env.SUPABASE_KEY,
   );
 
-  constructor(private prisma: PrismaService) { }
+  constructor(private prisma: PrismaService) {}
 
   async getProfile(username: string, token: string) {
     try {

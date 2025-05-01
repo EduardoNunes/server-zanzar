@@ -8,12 +8,15 @@ import {
   Post,
   Query,
   UploadedFile,
+  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { ProfileService } from './profile.service';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { JwtAuthGuard } from 'src/auth/guard/JwtAuthGuard';
 
 @Controller('profile')
+@UseGuards(JwtAuthGuard)
 export class ProfileController {
   constructor(private readonly profileService: ProfileService) {}
 
@@ -38,7 +41,12 @@ export class ProfileController {
     @Query('limit') limit: number,
     @Query('profileId') profileIdVisitant: string,
   ) {
-    return this.profileService.getPosts(username, page, limit, profileIdVisitant);
+    return this.profileService.getPosts(
+      username,
+      page,
+      limit,
+      profileIdVisitant,
+    );
   }
 
   @Post('profile-image')
