@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { createClient } from '@supabase/supabase-js';
 import { PrismaService } from 'src/prisma/prisma.service';
 
@@ -19,18 +19,51 @@ export class UserCartService {
     quantity: number,
   ) {
     try {
-      const userCart = await this.prisma.userCart.create({
-        data: {
+      const hasProduct = await this.prisma.userCart.findFirst({
+        where: {
           profileId,
-          productId,
-          productVariantId: variationId,
           productVariantSizeId: size,
-          quantity,
         },
       });
+
+      if (hasProduct) {
+        throw new HttpException(
+          'Este produto já está no carrinho.',
+          HttpStatus.CONFLICT,
+        );
+      }
+
+      const [userCart] = await this.prisma.$transaction([
+        this.prisma.userCart.create({
+          data: {
+            profileId,
+            productId,
+            productVariantId: variationId,
+            productVariantSizeId: size,
+            quantity,
+          },
+        }),
+
+        this.prisma.profiles.update({
+          where: { id: profileId },
+          data: {
+            cartCountItems: {
+              increment: 1,
+            },
+          },
+        }),
+      ]);
+
       return userCart;
     } catch (error) {
-      throw new Error('Error adding item to cart: ' + error.message);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      throw new HttpException(
+        'Erro ao adicionar item ao carrinho.',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 
@@ -43,6 +76,7 @@ export class UserCartService {
           quantity: true,
           productVariantSize: {
             select: {
+              id: true,
               size: true,
               price: true,
               stock: true,
@@ -98,6 +132,7 @@ export class UserCartService {
 
           return {
             id: item.id,
+            productVariantSizeId: item.productVariantSize.id,
             quantity: item.quantity,
             size: item.productVariantSize.size,
             price: item.productVariantSize.price,
@@ -114,6 +149,68 @@ export class UserCartService {
       return processedCartProducts;
     } catch (error) {
       throw new Error('Error fetching cart products: ' + error.message);
+    }
+  }
+
+  async buyProducts(profileId: string, products: any[]) {
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        const order = await tx.order.create({
+          data: {
+            profileId,
+            status: 'PAGO',
+          },
+        });
+
+        for (const product of products) {
+          const { productVariantSizeId, quantity, cartId } = product;
+
+          const variantSize = await tx.productVariantSize.findFirst({
+            where: { id: productVariantSizeId },
+          });
+
+          if (!variantSize) {
+            throw new Error(
+              `ProductVariantSize not found: ${productVariantSizeId}`,
+            );
+          }
+
+          await tx.orderItem.create({
+            data: {
+              orderId: order.id,
+              productVariantSizeId,
+              quantity,
+              priceAtPurchase: variantSize.price * quantity,
+            },
+          });
+
+          await tx.productVariantSize.update({
+            where: { id: productVariantSizeId },
+            data: {
+              stock: {
+                decrement: quantity,
+              },
+            },
+          });
+
+          await tx.profiles.update({
+            where: { id: profileId },
+            data: {
+              cartCountItems: {
+                decrement: 1,
+              },
+            },
+          });
+
+          await tx.userCart.delete({
+            where: { id: cartId },
+          });
+        }
+      });
+
+      return { success: true };
+    } catch (error) {
+      throw new Error('Error buying products: ' + error.message);
     }
   }
 }

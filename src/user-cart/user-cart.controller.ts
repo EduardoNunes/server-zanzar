@@ -34,4 +34,11 @@ export class UserCartController {
 
     return this.userCartService.getCartProducts(profileId);
   }
+
+  @Post('buy-products')
+  async buyProducts(@Body() body: any) {
+    const { profileId, selectedProducts } = body;
+
+    return this.userCartService.buyProducts(profileId, selectedProducts);
+  }
 }
