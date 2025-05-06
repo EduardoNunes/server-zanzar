@@ -30,7 +30,6 @@ export class UserCartController {
 
   @Get('get-cart-products')
   async getCartProducts(@Query('profileId') profileId: string) {
-    console.log('GETPRODUCTS AQUI');
 
     return this.userCartService.getCartProducts(profileId);
   }

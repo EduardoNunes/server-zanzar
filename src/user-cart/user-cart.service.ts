@@ -33,6 +33,18 @@ export class UserCartService {
         );
       }
 
+      const cartCountItems = await this.prisma.profiles.findFirst({
+        where: { id: profileId },
+        select: { cartCountItems: true },
+      });
+
+      if (cartCountItems.cartCountItems >= 10) {
+        throw new HttpException(
+          'O limite máximo de produtos no carrinho foi atingido.',
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
       const [userCart] = await this.prisma.$transaction([
         this.prisma.userCart.create({
           data: {
@@ -153,20 +165,37 @@ export class UserCartService {
   }
 
   async buyProducts(profileId: string, products: any[]) {
+    if (products.length > 5) {
+      throw new HttpException(
+        'Você só pode comprar até 5 produtos diferentes por vez.',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
     try {
       await this.prisma.$transaction(async (tx) => {
         const order = await tx.order.create({
           data: {
             profileId,
-            status: 'PAGO',
           },
         });
 
         for (const product of products) {
-          const { productVariantSizeId, quantity, cartId } = product;
+          const { productVariantSizeId, quantity, cartId } = product as {
+            productVariantSizeId: string;
+            quantity: number;
+            cartId: string;
+          };
 
           const variantSize = await tx.productVariantSize.findFirst({
             where: { id: productVariantSizeId },
+            include: {
+              variant: {
+                include: {
+                  product: true,
+                },
+              },
+            },
           });
 
           if (!variantSize) {
@@ -177,10 +206,14 @@ export class UserCartService {
 
           await tx.orderItem.create({
             data: {
-              orderId: order.id,
-              productVariantSizeId,
+              order: { connect: { id: order.id } },
+              productVariantSize: { connect: { id: productVariantSizeId } },
               quantity,
               priceAtPurchase: variantSize.price * quantity,
+              userStore: {
+                connect: { id: variantSize.variant.product.userStoreId },
+              },
+              status: 'PAGO',
             },
           });
 
