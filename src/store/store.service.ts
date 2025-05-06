@@ -1,4 +1,9 @@
-import { BadRequestException, HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  HttpException,
+  HttpStatus,
+  Injectable,
+} from '@nestjs/common';
 import { createClient } from '@supabase/supabase-js';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { StoreDataProps } from 'src/types/story-types';
@@ -10,13 +15,13 @@ export class StoreService {
     process.env.SUPABASE_KEY,
   );
 
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(private readonly prisma: PrismaService) {}
 
   async createStore(
     storeData: StoreDataProps,
     profileId: string,
     logo: Express.Multer.File,
-    banner: Express.Multer.File
+    banner: Express.Multer.File,
   ) {
     const { name, description, address } = storeData;
 
@@ -24,7 +29,7 @@ export class StoreService {
       if (!name || !description) {
         throw new HttpException(
           'Nome e descrição da loja são obrigatórios.',
-          HttpStatus.BAD_REQUEST
+          HttpStatus.BAD_REQUEST,
         );
       }
 
@@ -33,7 +38,10 @@ export class StoreService {
       });
 
       if (!profile) {
-        throw new HttpException('Usuário não encontrado.', HttpStatus.NOT_FOUND);
+        throw new HttpException(
+          'Usuário não encontrado.',
+          HttpStatus.NOT_FOUND,
+        );
       }
 
       const existingStore = await this.prisma.userStore.findFirst({
@@ -56,7 +64,10 @@ export class StoreService {
       });
 
       if (existingStore) {
-        throw new HttpException('Já existe uma loja com esse nome.', HttpStatus.CONFLICT);
+        throw new HttpException(
+          'Já existe uma loja com esse nome.',
+          HttpStatus.CONFLICT,
+        );
       }
 
       // Upload do LOGO
@@ -71,7 +82,7 @@ export class StoreService {
       if (logoUploadError) {
         throw new HttpException(
           `Erro ao fazer upload do logo: ${logoUploadError.message}`,
-          HttpStatus.INTERNAL_SERVER_ERROR
+          HttpStatus.INTERNAL_SERVER_ERROR,
         );
       }
 
@@ -92,7 +103,7 @@ export class StoreService {
       if (bannerUploadError) {
         throw new HttpException(
           `Erro ao fazer upload do banner: ${bannerUploadError.message}`,
-          HttpStatus.INTERNAL_SERVER_ERROR
+          HttpStatus.INTERNAL_SERVER_ERROR,
         );
       }
 
@@ -104,81 +115,82 @@ export class StoreService {
       if (!logoUrl || !bannerUrl) {
         throw new HttpException(
           'Erro ao obter URLs públicas das imagens.',
-          HttpStatus.INTERNAL_SERVER_ERROR
+          HttpStatus.INTERNAL_SERVER_ERROR,
         );
       }
 
-      const [createdAddress, createdStore, updatedProfile] = await this.prisma.$transaction(async (tx) => {
-        let createdAddress = null;
+      const [createdAddress, createdStore, updatedProfile] =
+        await this.prisma.$transaction(async (tx) => {
+          let createdAddress = null;
 
-        if (address) {
-          const parsedAddress = typeof address === 'string' ? JSON.parse(address) : address;
+          if (address) {
+            const parsedAddress =
+              typeof address === 'string' ? JSON.parse(address) : address;
 
-          const {
-            street,
-            number,
-            complement,
-            neighborhood,
-            city,
-            state,
-            country,
-            postalCode,
-          } = parsedAddress;
-
-          createdAddress = await tx.address.create({
-            data: {
+            const {
               street,
               number,
-              complement: complement || null,
-              district: neighborhood,
+              complement,
+              neighborhood,
               city,
               state,
               country,
-              zipCode: postalCode,
+              postalCode,
+            } = parsedAddress;
+
+            createdAddress = await tx.address.create({
+              data: {
+                street,
+                number,
+                complement: complement || null,
+                district: neighborhood,
+                city,
+                state,
+                country,
+                zipCode: postalCode,
+              },
+            });
+          }
+
+          const storeData: any = {
+            name,
+            slug: name.toLowerCase().replace(/\s+/g, '-'),
+            description,
+            logoUrl,
+            bannerUrl,
+            rating: 0,
+            ratingCount: 0,
+            totalRevenue: 0,
+            isActive: false,
+            productFeePercentage: 5,
+            subscriptionAmount: 3000,
+            profile: {
+              connect: { id: profileId },
             },
-          });
-        }
-
-        const storeData: any = {
-          name,
-          slug: name.toLowerCase().replace(/\s+/g, '-'),
-          description,
-          logoUrl,
-          bannerUrl,
-          rating: 0,
-          ratingCount: 0,
-          totalRevenue: 0,
-          isActive: false,
-          productFeePercentage: 5,
-          subscriptionAmount: 3000,
-          profile: {
-            connect: { id: profileId },
-          },
-        };
-
-        if (createdAddress) {
-          storeData.address = {
-            connect: { id: createdAddress.id },
           };
-        }
 
-        const createdStore = await tx.userStore.create({ data: storeData });
+          if (createdAddress) {
+            storeData.address = {
+              connect: { id: createdAddress.id },
+            };
+          }
 
-        const updatedProfile = await tx.profiles.update({
-          where: { id: profileId },
-          data: { hasUserStore: true },
+          const createdStore = await tx.userStore.create({ data: storeData });
+
+          const updatedProfile = await tx.profiles.update({
+            where: { id: profileId },
+            data: { hasUserStore: true },
+          });
+
+          return [createdAddress, createdStore, updatedProfile];
         });
 
-        return [createdAddress, createdStore, updatedProfile];
-      });
-
       return { createdAddress, createdStore, updatedProfile };
-
     } catch (error) {
       console.error(error);
       throw new HttpException(
         error.message || 'Erro ao criar loja.',
-        error.status || HttpStatus.INTERNAL_SERVER_ERROR
+        error.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -240,7 +252,11 @@ export class StoreService {
     };
   }
 
-  async updateBanner(profileId: string, bannerFile: Express.Multer.File, userStoreId: string) {
+  async updateBanner(
+    profileId: string,
+    bannerFile: Express.Multer.File,
+    userStoreId: string,
+  ) {
     try {
       if (!bannerFile) {
         throw new BadRequestException('Nenhum arquivo de imagem enviado.');
@@ -272,9 +288,10 @@ export class StoreService {
       }
 
       // Gera a URL assinada válida por 1 hora
-      const { data: signedUrlData, error: signedUrlError } = await this.supabase.storage
-        .from('zanzar-images')
-        .createSignedUrl(`banners/${userStoreId}-banner.png`, 60 * 60); // 1 hora
+      const { data: signedUrlData, error: signedUrlError } =
+        await this.supabase.storage
+          .from('zanzar-images')
+          .createSignedUrl(`banners/${userStoreId}-banner.png`, 60 * 60); // 1 hora
 
       if (signedUrlError || !signedUrlData?.signedUrl) {
         throw new BadRequestException('Erro ao gerar URL assinada.');
@@ -299,8 +316,11 @@ export class StoreService {
     }
   }
 
-
-  async updateLogo(profileId: string, logoFile: Express.Multer.File, userStoreId: string) {
+  async updateLogo(
+    profileId: string,
+    logoFile: Express.Multer.File,
+    userStoreId: string,
+  ) {
     try {
       if (!logoFile) {
         throw new BadRequestException('Nenhum arquivo de imagem enviado.');
@@ -332,9 +352,10 @@ export class StoreService {
       }
 
       // Geração de URL assinada (válida por 1 hora)
-      const { data: signedUrlData, error: signedUrlError } = await this.supabase.storage
-        .from('zanzar-images')
-        .createSignedUrl(`logos/${userStoreId}-logo.png`, 60 * 60); // 1 hora
+      const { data: signedUrlData, error: signedUrlError } =
+        await this.supabase.storage
+          .from('zanzar-images')
+          .createSignedUrl(`logos/${userStoreId}-logo.png`, 60 * 60); // 1 hora
 
       if (signedUrlError || !signedUrlData?.signedUrl) {
         throw new BadRequestException('Erro ao gerar URL assinada.');
@@ -382,8 +403,7 @@ export class StoreService {
               decrement: 1,
             },
           },
-        })
-
+        });
       } else {
         await this.prisma.favoriteStore.create({
           data: {
@@ -399,9 +419,8 @@ export class StoreService {
               increment: 1,
             },
           },
-        })
+        });
       }
-
     } catch (error) {
       console.error('Erro ao favoritar loja:', error);
       throw new BadRequestException({
@@ -411,6 +430,142 @@ export class StoreService {
       });
     }
   }
+
+  async getStoreIdBySlug(slug: string) {
+    const store = await this.prisma.userStore.findFirst({
+      where: { slug },
+    });
+
+    if (!store) {
+      throw new HttpException('Loja não encontrada.', HttpStatus.NOT_FOUND);
+    }
+
+    return store.profileId;
+  }
+
+  async getStoreOrders(
+    profileId: string,
+    slug: string,
+    page: number,
+    limit: number,
+  ) {
+    const store = await this.prisma.userStore.findFirst({
+      where: { slug },
+    });
+
+    if (!store) {
+      throw new HttpException('Loja não encontrada.', HttpStatus.NOT_FOUND);
+    }
+
+    if (store.profileId !== profileId) {
+      throw new HttpException(
+        'Acesso não autorizado.',
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+
+    const skip = (page - 1) * limit;
+
+    const ordersItems = await this.prisma.orderItem.findMany({
+      where: { storeId: store.id },
+      include: {
+        order: {
+          include: {
+            profile: {
+              select: {
+                id: true,
+                username: true,
+                user: {
+                  select: {
+                    id: true,
+                    email: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+        productVariantSize: {
+          include: {
+            variant: {
+              include: {
+                product: {
+                  select: {
+                    id: true,
+                    name: true,
+                    description: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        order: {
+          createdAt: 'desc',
+        },
+      },
+      skip,
+      take: Number(limit),
+    });
+
+    const formattedOrders = ordersItems.map((item) => {
+      const { order, productVariantSize, quantity, priceAtPurchase, status } =
+        item;
+      const { profile } = order;
+      const { variant } = productVariantSize;
+      const { product } = variant;
+
+      return {
+        orderId: order.id,
+        orderItem: item.id,
+        status,
+        customer: {
+          id: profile.id,
+          username: profile.username,
+          email: profile.user.email,
+        },
+        product: {
+          id: product.id,
+          name: product.name,
+          description: product.description,
+        },
+        variant: {
+          id: productVariantSize.id,
+          size: productVariantSize.size,
+          basePrice: productVariantSize.basePrice,
+          colorName: variant.colorName,
+        },
+        quantity,
+        priceAtPurchase,
+      };
+    });
+
+    return formattedOrders;
+  }
+
+  async updateOrderStatus(orderItemId: string, status: string) {
+    const orderItem = await this.prisma.orderItem.findUnique({
+      where: { id: orderItemId },
+    });
+
+    if (!orderItem) {
+      throw new HttpException('Pedido não encontrado.', HttpStatus.NOT_FOUND);
+    }
+
+    if (orderItem.status === 'CANCELED') {
+      throw new HttpException(
+        'Não é possível alterar o status de um pedido cancelado.',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const updatedOrder = await this.prisma.orderItem.update({
+      where: { id: orderItemId },
+      data: { status },
+    });
+
+    return updatedOrder;
+  }
 }
-
-
