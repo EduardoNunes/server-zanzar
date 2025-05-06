@@ -72,6 +72,7 @@ model Profiles {
   totalPosts       Int                @default(0)
   hasUserStore     Boolean            @default(false)
   cartCountItems   Int                @default(0)
+  originalName     String?
   posts            Posts[]
   likes            Likes[]
   comments         Comments[]
@@ -280,6 +281,7 @@ model UserStore {
   address     Address?        @relation("StoreAddress", fields: [addressId], references: [id])
   products    Product[]
   favoritedBy FavoriteStore[]
+  orderItems  OrderItem[]
 }
 
 model FavoriteStore {
@@ -349,9 +351,9 @@ model ProductVariantSize {
   price     Int
   basePrice Int
 
-  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
-  cartItems UserCart[]
-  OrderItem OrderItem[]
+  variant    ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  cartItems  UserCart[]
+  orderItems OrderItem[]
 }
 
 model ProductImage {
@@ -384,12 +386,11 @@ model UserCart {
 }
 
 model Order {
-  id         String      @id @default(uuid())
-  profileId  String
-  createdAt  DateTime    @default(now())
-  status     String // 'PAGO', 'ENVIADO' 'ENTREGUE', 'CANCELADO'
-  profile    Profiles    @relation(fields: [profileId], references: [id])
-  orderItems OrderItem[]
+  id        String      @id @default(uuid())
+  profileId String
+  createdAt DateTime    @default(now())
+  profile   Profiles    @relation(fields: [profileId], references: [id])
+  items     OrderItem[]
 }
 
 model OrderItem {
@@ -398,7 +399,10 @@ model OrderItem {
   productVariantSizeId String
   quantity             Int
   priceAtPurchase      Int
+  storeId              String
+  status               String // 'PAGO', 'ENVIADO' 'ENTREGUE', 'CANCELADO'
 
-  order              Order               @relation(fields: [orderId], references: [id])
-  productVariantSize ProductVariantSize? @relation(fields: [productVariantSizeId], references: [id])
+  order              Order              @relation(fields: [orderId], references: [id])
+  productVariantSize ProductVariantSize @relation(fields: [productVariantSizeId], references: [id])
+  userStore          UserStore          @relation(fields: [storeId], references: [id])
 }
