@@ -72,7 +72,9 @@ model Profiles {
   totalPosts       Int                @default(0)
   hasUserStore     Boolean            @default(false)
   cartCountItems   Int                @default(0)
-  originalName     String?
+  fullName         String?
+  birthDate        DateTime?
+  phoneNumber      String?
   posts            Posts[]
   likes            Likes[]
   comments         Comments[]
