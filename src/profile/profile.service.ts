@@ -493,4 +493,132 @@ export class ProfileService {
       });
     }
   }
+
+  async getUserData(profileId: string) {
+    try {
+      const userData = await this.prisma.profiles.findUnique({
+        where: { id: profileId },
+        select: {
+          fullName: true,
+          birthDate: true,
+          phoneNumber: true,
+          addressId: true,
+          address: {
+            select: {
+              street: true,
+              number: true,
+              complement: true,
+              district: true,
+              city: true,
+              state: true,
+              zipCode: true,
+              country: true,
+            },
+          },
+        },
+      });
+
+      const formattedAddress = userData.address
+        ? {
+            street: userData.address.street,
+            number: userData.address.number,
+            complement: userData.address.complement,
+            neighborhood: userData.address.district,
+            city: userData.address.city,
+            state: userData.address.state,
+            postalCode: userData.address.zipCode,
+            country: userData.address.country,
+          }
+        : null;
+
+      const formattedBirthDate = userData.birthDate
+        ? new Date(userData.birthDate).toISOString().split('T')[0]
+        : null;
+
+      return {
+        fullName: userData.fullName,
+        birthDate: formattedBirthDate,
+        phoneNumber: userData.phoneNumber,
+        addressId: userData.addressId,
+        address: formattedAddress,
+      };
+    } catch (error) {
+      console.error('Erro ao buscar dados do usuário:', error);
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        message: error.message || 'Erro desconhecido',
+        error: 'Bad Request',
+      });
+    }
+  }
+
+  async updateUserData(
+    profileId: string,
+    fullName: string,
+    birthDate: string,
+    phoneNumber: string,
+    addressId: string,
+    street: string,
+    number: string,
+    complement: string,
+    neighborhood: string,
+    city: string,
+    state: string,
+    postalCode: string,
+    country: string,
+  ) {
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        let address;
+
+        if (!addressId) {
+          address = await tx.address.create({
+            data: {
+              street,
+              number,
+              complement,
+              district: neighborhood,
+              city,
+              state,
+              country,
+              zipCode: postalCode,
+            },
+          });
+        } else {
+          address = await tx.address.update({
+            where: { id: addressId },
+            data: {
+              street,
+              number,
+              complement,
+              district: neighborhood,
+              city,
+              state,
+              country,
+              zipCode: postalCode,
+            },
+          });
+        }
+
+        await tx.profiles.update({
+          where: { id: profileId },
+          data: {
+            fullName,
+            birthDate: new Date(birthDate),
+            phoneNumber,
+            addressId: address.id,
+          },
+        });
+      });
+
+      return { message: 'Dados atualizados com sucesso!' };
+    } catch (error) {
+      console.error('Erro ao atualizar dados do usuário:', error);
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        message: error.message || 'Erro desconhecido',
+        error: 'Bad Request',
+      });
+    }
+  }
 }

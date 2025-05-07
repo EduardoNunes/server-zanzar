@@ -6,6 +6,7 @@ import {
   Headers,
   Param,
   Post,
+  Put,
   Query,
   UploadedFile,
   UseGuards,
@@ -82,6 +83,50 @@ export class ProfileController {
       profileId,
       page,
       limit,
+    );
+  }
+
+  @Get('get-user-data')
+  async getUserData(@Query('profileId') profileId: string) {
+    return this.profileService.getUserData(profileId);
+  }
+
+  @Put('update-user-data/:profileId')
+  async updateUserData(
+    @Param('profileId') profileId: string,
+    @Body()
+    completeData: {
+      fullName: string;
+      birthDate: string;
+      phoneNumber: string;
+      addressId: string;
+      address: {
+        street: string;
+        number: string;
+        complement: string;
+        neighborhood: string;
+        city: string;
+        state: string;
+        postalCode: string;
+        country: string;
+      };
+    },
+  ) {
+
+    return this.profileService.updateUserData(
+      profileId,
+      completeData.fullName,
+      completeData.birthDate,
+      completeData.phoneNumber,
+      completeData.addressId,
+      completeData.address.street,
+      completeData.address.number,
+      completeData.address.complement,
+      completeData.address.neighborhood,
+      completeData.address.city,
+      completeData.address.state,
+      completeData.address.postalCode,
+      completeData.address.country,
     );
   }
 }
