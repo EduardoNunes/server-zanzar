@@ -124,9 +124,7 @@ export class ProfileService {
       const uniqueCategories = await this.prisma.posts.findMany({
         where: { profileId: profileVisited.id },
         distinct: ['categoryId'],
-        orderBy: {
-          createdAt: 'desc',
-        },
+        orderBy: { createdAt: 'desc' },
         select: {
           category: {
             select: {
@@ -138,7 +136,7 @@ export class ProfileService {
         take: limit,
       });
 
-      //Buscar os posts de cada categoria
+      // Buscar os posts de cada categoria
       const postsByCategory = await Promise.all(
         uniqueCategories.map(async (cat) => {
           const category = cat.category.categories;
@@ -163,17 +161,6 @@ export class ProfileService {
                   categories: true,
                 },
               },
-              likes: {
-                select: {
-                  id: true,
-                  profile: {
-                    select: {
-                      id: true,
-                      username: true,
-                    },
-                  },
-                },
-              },
               _count: {
                 select: {
                   likes: true,
@@ -182,12 +169,25 @@ export class ProfileService {
               },
             },
           });
+
           return posts;
         }),
       );
 
-      //Condensar os arrays de arrays em um único array
       const allPosts = postsByCategory.flat();
+
+      // Buscar os postIds curtidos pelo visitante
+      const likedPostIds = profileIdVisitant
+        ? await this.prisma.likes
+            .findMany({
+              where: {
+                profileId: profileIdVisitant,
+                postId: { in: allPosts.map((post) => post.id) },
+              },
+              select: { postId: true },
+            })
+            .then((res) => res.map((r) => r.postId))
+        : [];
 
       const postsWithSignedUrls = await Promise.all(
         allPosts.map(async (post) => {
@@ -227,10 +227,7 @@ export class ProfileService {
               };
             }
 
-            // Checa se o post foi curtido pelo usuário logado
-            const likedByLoggedInUser = profileIdVisitant
-              ? post.likes.some((like) => like.profile.id === profileIdVisitant)
-              : false;
+            const likedByLoggedInUser = likedPostIds.includes(post.id);
 
             return {
               ...post,
