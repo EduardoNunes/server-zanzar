@@ -511,8 +511,14 @@ export class StoreService {
     });
 
     const formattedOrders = ordersItems.map((item) => {
-      const { order, productVariantSize, quantity, priceAtPurchase, status } =
-        item;
+      const {
+        order,
+        productVariantSize,
+        quantity,
+        priceAtPurchase,
+        status,
+        priceAtPurchaseBase,
+      } = item;
       const { profile } = order;
       const { variant } = productVariantSize;
       const { product } = variant;
@@ -539,6 +545,7 @@ export class StoreService {
         },
         quantity,
         priceAtPurchase,
+        priceAtPurchaseBase,
       };
     });
 

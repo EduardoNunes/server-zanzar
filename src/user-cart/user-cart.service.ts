@@ -210,6 +210,7 @@ export class UserCartService {
               productVariantSize: { connect: { id: productVariantSizeId } },
               quantity,
               priceAtPurchase: variantSize.price * quantity,
+              priceAtPurchaseBase: variantSize.basePrice * quantity,
               userStore: {
                 connect: { id: variantSize.variant.product.userStoreId },
               },
@@ -225,6 +226,52 @@ export class UserCartService {
               },
             },
           });
+
+          const productUpdated = await tx.product.update({
+            where: { id: variantSize.variant.productId },
+            data: {
+              totalSold: {
+                increment: quantity,
+              },
+              avaliableQuantity: {
+                decrement: quantity,
+              },
+            },
+            select: {
+              avaliableQuantity: true,
+              userStoreId: true,
+            },
+          });
+
+          // Atualiza dados básicos da loja
+          await tx.userStore.update({
+            where: { id: productUpdated.userStoreId },
+            data: {
+              totalSales: {
+                increment: quantity,
+              },
+              totalRevenue: {
+                increment: variantSize.price * quantity,
+              },
+              totalFee: {
+                increment:
+                  variantSize.price * quantity -
+                  variantSize.basePrice * quantity,
+              },
+            },
+          });
+
+          // Se zerou o estoque, decrementar 1 do totalProducts
+          if (productUpdated.avaliableQuantity === 0) {
+            await tx.userStore.update({
+              where: { id: productUpdated.userStoreId },
+              data: {
+                totalProducts: {
+                  decrement: 1,
+                },
+              },
+            });
+          }
 
           await tx.profiles.update({
             where: { id: profileId },
