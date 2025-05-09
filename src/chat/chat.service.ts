@@ -13,6 +13,7 @@ export class ChatService {
     process.env.SUPABASE_URL,
     process.env.SUPABASE_KEY,
   );
+  private bucketName = process.env.BUCKET_MIDIAS;
 
   constructor(private prisma: PrismaService) {}
 
@@ -81,12 +82,12 @@ export class ChatService {
 
         if (avatarUrl) {
           const bucketPath = avatarUrl.replace(
-            `${process.env.SUPABASE_URL}/storage/v1/object/public/`,
+            `${process.env.SUPABASE_URL}/storage/v1/object/public/${this.bucketName}/`,
             '',
           );
 
           const { data, error } = await this.supabase.storage
-            .from('zanzar-images')
+            .from(this.bucketName)
             .createSignedUrl(bucketPath, 86400);
 
           if (error) {
@@ -246,12 +247,12 @@ export class ChatService {
 
               if (avatarUrl) {
                 const bucketPath = avatarUrl.replace(
-                  `${process.env.SUPABASE_URL}/storage/v1/object/public/`,
+                  `${process.env.SUPABASE_URL}/storage/v1/object/public/${this.bucketName}/`,
                   '',
                 );
 
                 const { data, error } = await this.supabase.storage
-                  .from('zanzar-images')
+                  .from(this.bucketName)
                   .createSignedUrl(bucketPath, 86400);
 
                 if (error) {
@@ -326,12 +327,12 @@ export class ChatService {
           if (avatarUrl) {
             try {
               const bucketPath = avatarUrl.replace(
-                `${process.env.SUPABASE_URL}/storage/v1/object/public/`,
+                `${process.env.SUPABASE_URL}/storage/v1/object/public/${this.bucketName}/`,
                 '',
               );
 
               const { data, error } = await this.supabase.storage
-                .from('zanzar-images')
+                .from(this.bucketName)
                 .createSignedUrl(bucketPath, 86400);
 
               if (error) {
@@ -387,12 +388,12 @@ export class ChatService {
     // Gerar URL assinada para o avatar, se existir.
     if (profile.avatarUrl) {
       const bucketPath = profile.avatarUrl.replace(
-        `${process.env.SUPABASE_URL}/storage/v1/object/public/`,
+        `${process.env.SUPABASE_URL}/storage/v1/object/public/${this.bucketName}/`,
         '',
       );
 
       const { data: signedUrlData, error } = await this.supabase.storage
-        .from('zanzar-images')
+        .from(this.bucketName)
         .createSignedUrl(bucketPath, 86400);
 
       if (error) {

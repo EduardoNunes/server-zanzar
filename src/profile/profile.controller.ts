@@ -27,7 +27,7 @@ export class ProfileController {
     @Headers('authorization') authorizationHeader: string,
   ) {
     const token = authorizationHeader?.replace('Bearer ', '');
-
+    
     if (!token) {
       throw new BadRequestException('Token de autorização ausente.');
     }

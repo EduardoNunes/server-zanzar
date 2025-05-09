@@ -8,6 +8,7 @@ export class PurchasesService {
     process.env.SUPABASE_URL,
     process.env.SUPABASE_KEY,
   );
+  private bucketName = process.env.BUCKET_MIDIAS;
 
   constructor(private prisma: PrismaService) {}
 
@@ -49,14 +50,14 @@ export class PurchasesService {
                 images.map(async (image) => {
                   if (image.url) {
                     let bucketPath = image.url.replace(
-                      `${process.env.SUPABASE_URL}/storage/v1/object/public/zanzar-images/`,
+                      `${process.env.SUPABASE_URL}/storage/v1/object/public/${this.bucketName}/`,
                       '',
                     );
                     if (bucketPath.startsWith('/'))
                       bucketPath = bucketPath.slice(1);
 
                     const { data, error } = await this.supabase.storage
-                      .from('zanzar-images')
+                      .from(this.bucketName)
                       .createSignedUrl(bucketPath, 3600);
 
                     if (!error && data?.signedUrl) {

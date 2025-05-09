@@ -15,6 +15,7 @@ export class ProfileService {
     process.env.SUPABASE_URL,
     process.env.SUPABASE_KEY,
   );
+  private bucketName = process.env.BUCKET_MIDIAS;
 
   constructor(private prisma: PrismaService) {}
 
@@ -59,17 +60,16 @@ export class ProfileService {
         });
         isFollowed = !!followRelation;
       }
-
       let avatarUrl = currentUserProfile.avatarUrl;
 
       if (avatarUrl) {
         const bucketPath = avatarUrl.replace(
-          `${process.env.SUPABASE_URL}/storage/v1/object/public/`,
+          `${process.env.SUPABASE_URL}/storage/v1/object/public/${this.bucketName}/`,
           '',
         );
 
         const { data, error } = await this.supabase.storage
-          .from('zanzar-images')
+          .from(this.bucketName)
           .createSignedUrl(bucketPath, 3600);
 
         if (error) {
@@ -204,12 +204,12 @@ export class ProfileService {
             }
 
             const bucketPath = post.mediaUrl.replace(
-              `${process.env.SUPABASE_URL}/storage/v1/object/public/zanzar-images/`,
+              `${process.env.SUPABASE_URL}/storage/v1/object/public/${this.bucketName}/`,
               '',
             );
 
             const { data, error } = await this.supabase.storage
-              .from('zanzar-images')
+              .from(this.bucketName)
               .createSignedUrl(bucketPath, 3600);
 
             if (error || !data?.signedUrl) {
@@ -327,12 +327,12 @@ export class ProfileService {
             }
 
             const bucketPath = post.mediaUrl.replace(
-              `${process.env.SUPABASE_URL}/storage/v1/object/public/zanzar-images/`,
+              `${process.env.SUPABASE_URL}/storage/v1/object/public/${this.bucketName}/`,
               '',
             );
 
             const { data, error } = await this.supabase.storage
-              .from('zanzar-images')
+              .from(this.bucketName)
               .createSignedUrl(bucketPath, 3600);
 
             if (error || !data?.signedUrl) {
@@ -384,9 +384,11 @@ export class ProfileService {
         throw new BadRequestException('Nenhum arquivo de imagem enviado.');
       }
 
+      const filePath = `users/${profileId}/${profileId}-${Date.now()}-avatar.png`;
+
       const { data, error } = await this.supabase.storage
-        .from('zanzar-images')
-        .upload(`avatars/${profileId}-avatar.png`, avatarFile.buffer, {
+        .from(this.bucketName)
+        .upload(filePath, avatarFile.buffer, {
           cacheControl: '3600',
           upsert: true,
         });
@@ -397,7 +399,7 @@ export class ProfileService {
         );
       }
 
-      const avatarUrl = `${process.env.SUPABASE_URL}/storage/v1/object/public/avatars/${profileId}-avatar.png`;
+      const avatarUrl = `${process.env.SUPABASE_URL}/storage/v1/object/public/${this.bucketName}/${filePath}`;
 
       await this.prisma.profiles.update({
         where: { id: profileId },

@@ -10,6 +10,7 @@ export class ProductService {
     process.env.SUPABASE_URL,
     process.env.SUPABASE_KEY,
   );
+  private bucketName = process.env.BUCKET_MIDIAS;
 
   constructor(private prisma: PrismaService) {}
 
@@ -95,9 +96,9 @@ export class ProductService {
         const uploadedImages = [];
         for (const image of variant.images) {
           const { data: uploadData, error } = await this.supabase.storage
-            .from('zanzar-images')
+            .from(this.bucketName)
             .upload(
-              `product/${userStoreId}-${product.name}-${Date.now()}`,
+              `stores/${userStore.slug}-${userStore.profileId}/${userStoreId}-${product.name}-${Date.now()}`,
               image.buffer,
               {
                 contentType: image.mimetype,
@@ -106,7 +107,7 @@ export class ProductService {
 
           if (error) throw new Error(`Erro ao enviar imagem: ${error.message}`);
 
-          const imageUrl = `${process.env.SUPABASE_URL}/storage/v1/object/public/zanzar-images/${uploadData.path}`;
+          const imageUrl = `${process.env.SUPABASE_URL}/storage/v1/object/public/${this.bucketName}/${uploadData.path}`;
           uploadedImages.push(imageUrl);
           uploadedFilePaths.push(uploadData.path); // ← salva path para rollback
         }
@@ -192,10 +193,10 @@ export class ProductService {
         return { message: 'Produto criado com sucesso' };
       });
     } catch (error) {
-      // ⬇️ Rollback manual: remove imagens do Supabase se algo falhar
+      // Rollback manual: remove imagens do Supabase se algo falhar
       await Promise.all(
         uploadedFilePaths.map(async (path) => {
-          await this.supabase.storage.from('zanzar-images').remove([path]);
+          await this.supabase.storage.from(this.bucketName).remove([path]);
         }),
       );
 
@@ -234,14 +235,14 @@ export class ProductService {
               if (image.url) {
                 // Corrige o bucketPath para pegar apenas o path relativo ao bucket
                 let bucketPath = image.url.replace(
-                  `${process.env.SUPABASE_URL}/storage/v1/object/public/zanzar-images/`,
+                  `${process.env.SUPABASE_URL}/storage/v1/object/public/${this.bucketName}/`,
                   '',
                 );
                 // Remove barra inicial, se houver
                 if (bucketPath.startsWith('/'))
                   bucketPath = bucketPath.slice(1);
                 const { data, error } = await this.supabase.storage
-                  .from('zanzar-images')
+                  .from(this.bucketName)
                   .createSignedUrl(bucketPath, 3600);
                 if (!error && data?.signedUrl) {
                   image.url = data.signedUrl;

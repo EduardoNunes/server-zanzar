@@ -14,6 +14,7 @@ export class StoreService {
     process.env.SUPABASE_URL,
     process.env.SUPABASE_KEY,
   );
+  private bucketName = process.env.BUCKET_MIDIAS;
 
   constructor(private readonly prisma: PrismaService) {}
 
@@ -70,11 +71,11 @@ export class StoreService {
         );
       }
 
-      // Upload do LOGO
-      const logoPath = `logos/${Date.now()}-${logo.originalname}`;
+      // Upload do LOGO na pasta logoPath = slug-profileId/data-nomeDaLogo
+      const logoPath = `stores/${name.toLowerCase().replace(/\s+/g, '-')}-${profileId}/${Date.now()}-${logo.originalname}`;
       const { data: logoUploadData, error: logoUploadError } =
         await this.supabase.storage
-          .from('zanzar-images')
+          .from(this.bucketName)
           .upload(logoPath, logo.buffer, {
             contentType: logo.mimetype,
           });
@@ -87,15 +88,15 @@ export class StoreService {
       }
 
       const { data: logoUrlData } = this.supabase.storage
-        .from('zanzar-images')
+        .from(this.bucketName)
         .getPublicUrl(logoUploadData.path);
       const logoUrl = logoUrlData?.publicUrl;
 
       // Upload do BANNER
-      const bannerPath = `banners/${Date.now()}-${banner.originalname}`;
+      const bannerPath = `stores/${name.toLowerCase().replace(/\s+/g, '-')}-${profileId}/${Date.now()}-${banner.originalname}`;
       const { data: bannerUploadData, error: bannerUploadError } =
         await this.supabase.storage
-          .from('zanzar-images')
+          .from(this.bucketName)
           .upload(bannerPath, banner.buffer, {
             contentType: banner.mimetype,
           });
@@ -108,7 +109,7 @@ export class StoreService {
       }
 
       const { data: bannerUrlData } = this.supabase.storage
-        .from('zanzar-images')
+        .from(this.bucketName)
         .getPublicUrl(bannerUploadData.path);
       const bannerUrl = bannerUrlData?.publicUrl;
 
@@ -225,9 +226,9 @@ export class StoreService {
     let bannerUrl = store.bannerUrl;
 
     if (logoUrl) {
-      const bucketPath = logoUrl.split('/zanzar-images/')[1];
+      const bucketPath = logoUrl.split(`/${this.bucketName}/`)[1];
       const { data, error } = await this.supabase.storage
-        .from('zanzar-images')
+        .from(this.bucketName)
         .createSignedUrl(bucketPath, 3600);
       if (!error && data?.signedUrl) {
         logoUrl = data.signedUrl;
@@ -235,9 +236,9 @@ export class StoreService {
     }
 
     if (bannerUrl) {
-      const bucketPath = bannerUrl.split('/zanzar-images/')[1];
+      const bucketPath = bannerUrl.split(`/${this.bucketName}/`)[1];
       const { data, error } = await this.supabase.storage
-        .from('zanzar-images')
+        .from(this.bucketName)
         .createSignedUrl(bucketPath, 3600);
       if (!error && data?.signedUrl) {
         bannerUrl = data.signedUrl;
@@ -275,11 +276,15 @@ export class StoreService {
 
       // Faz o upload (com upsert: true)
       const { error: uploadError } = await this.supabase.storage
-        .from('zanzar-images')
-        .upload(`banners/${userStoreId}-banner.png`, bannerFile.buffer, {
-          cacheControl: '3600',
-          upsert: true,
-        });
+        .from(this.bucketName)
+        .upload(
+          `stores/${isOwner.slug}-${profileId}/${userStoreId}-banner.png`,
+          bannerFile.buffer,
+          {
+            cacheControl: '3600',
+            upsert: true,
+          },
+        );
 
       if (uploadError) {
         throw new BadRequestException(
@@ -290,8 +295,11 @@ export class StoreService {
       // Gera a URL assinada válida por 1 hora
       const { data: signedUrlData, error: signedUrlError } =
         await this.supabase.storage
-          .from('zanzar-images')
-          .createSignedUrl(`banners/${userStoreId}-banner.png`, 60 * 60); // 1 hora
+          .from(this.bucketName)
+          .createSignedUrl(
+            `stores/${isOwner.slug}-${profileId}/${userStoreId}-banner.png`,
+            60 * 60,
+          ); // 1 hora
 
       if (signedUrlError || !signedUrlData?.signedUrl) {
         throw new BadRequestException('Erro ao gerar URL assinada.');
@@ -339,11 +347,15 @@ export class StoreService {
 
       // Upload da imagem para o Supabase Storage com overwrite (upsert)
       const { error: uploadError } = await this.supabase.storage
-        .from('zanzar-images')
-        .upload(`logos/${userStoreId}-logo.png`, logoFile.buffer, {
-          cacheControl: '3600',
-          upsert: true,
-        });
+        .from(this.bucketName)
+        .upload(
+          `stores/${isOwner.slug}-${profileId}/${userStoreId}-logo.png`,
+          logoFile.buffer,
+          {
+            cacheControl: '3600',
+            upsert: true,
+          },
+        );
 
       if (uploadError) {
         throw new BadRequestException(
@@ -354,8 +366,11 @@ export class StoreService {
       // Geração de URL assinada (válida por 1 hora)
       const { data: signedUrlData, error: signedUrlError } =
         await this.supabase.storage
-          .from('zanzar-images')
-          .createSignedUrl(`logos/${userStoreId}-logo.png`, 60 * 60); // 1 hora
+          .from(this.bucketName)
+          .createSignedUrl(
+            `stores/${isOwner.slug}-${profileId}/${userStoreId}-logo.png`,
+            60 * 60,
+          ); // 1 hora
 
       if (signedUrlError || !signedUrlData?.signedUrl) {
         throw new BadRequestException('Erro ao gerar URL assinada.');

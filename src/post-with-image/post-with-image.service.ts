@@ -14,6 +14,7 @@ export class PostsService {
     process.env.SUPABASE_URL,
     process.env.SUPABASE_KEY,
   );
+  private bucketName = process.env.BUCKET_MIDIAS;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -29,7 +30,7 @@ export class PostsService {
     order: number,
   ) {
     try {
-      const allowedImageTypes = ['image/jpeg', 'image/jpg'];
+      const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png'];
       const allowedVideoTypes = ['video/mp4'];
 
       if (
@@ -37,7 +38,7 @@ export class PostsService {
         !allowedVideoTypes.includes(file.mimetype)
       ) {
         throw new HttpException(
-          'Formato de arquivo não suportado. Apenas JPG, JPEG e MP4 são permitidos.',
+          'Formato de arquivo não suportado. Apenas JPG, JPEG, PNG e MP4 são permitidos.',
           HttpStatus.BAD_REQUEST,
         );
       }
@@ -62,7 +63,7 @@ export class PostsService {
 
       const { data: uploadData, error: uploadError } =
         await this.supabase.storage
-          .from('zanzar-images')
+          .from(this.bucketName)
           .upload(filePath, file.buffer, {
             contentType: file.mimetype,
           });
@@ -75,7 +76,7 @@ export class PostsService {
       }
 
       const { data: publicUrlData } = this.supabase.storage
-        .from('zanzar-images')
+        .from(this.bucketName)
         .getPublicUrl(uploadData?.path);
 
       const mediaUrl = publicUrlData?.publicUrl;
@@ -111,7 +112,7 @@ export class PostsService {
     } catch (error) {
       console.error('Erro ao criar post:', error);
       throw new HttpException(
-        'Erro ao criar o post. Por favor, tente novamente.',
+        `Erro ao criar o post. ${error.message}.`,
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
@@ -164,11 +165,11 @@ export class PostsService {
 
             if (post.mediaUrl) {
               const mediaPath = post.mediaUrl.replace(
-                `${process.env.SUPABASE_URL}/storage/v1/object/public/zanzar-images/`,
+                `${process.env.SUPABASE_URL}/storage/v1/object/public/${this.bucketName}/`,
                 '',
               );
               const { data, error } = await this.supabase.storage
-                .from('zanzar-images')
+                .from(this.bucketName)
                 .createSignedUrl(mediaPath, 3600);
               if (error) {
                 console.error(
@@ -186,7 +187,7 @@ export class PostsService {
                 '',
               );
               const { data, error } = await this.supabase.storage
-                .from('zanzar-images')
+                .from(this.bucketName)
                 .createSignedUrl(avatarPath, 3600);
               if (error) {
                 console.error(
@@ -532,12 +533,12 @@ export class PostsService {
 
       if (post.mediaUrl) {
         const mediaPath = post.mediaUrl.replace(
-          `${process.env.SUPABASE_URL}/storage/v1/object/public/zanzar-images/`,
+          `${process.env.SUPABASE_URL}/storage/v1/object/public/${this.bucketName}/`,
           '',
         );
         const { data: mediaData, error: mediaError } =
           await this.supabase.storage
-            .from('zanzar-images')
+            .from(this.bucketName)
             .createSignedUrl(mediaPath, 3600);
 
         if (mediaError) {
@@ -557,7 +558,7 @@ export class PostsService {
         );
         const { data: avatarData, error: avatarError } =
           await this.supabase.storage
-            .from('zanzar-images')
+            .from(this.bucketName)
             .createSignedUrl(avatarPath, 3600);
 
         if (avatarError) {

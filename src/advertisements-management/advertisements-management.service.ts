@@ -13,6 +13,7 @@ export class AdvertisementsManagementService {
     process.env.SUPABASE_URL,
     process.env.SUPABASE_KEY,
   );
+  private bucketName = process.env.BUCKET_MIDIAS;
 
   constructor(private prisma: PrismaService) {}
 
@@ -43,11 +44,11 @@ export class AdvertisementsManagementService {
 
           if (ad.mediaUrl) {
             const mediaPath = ad.mediaUrl.replace(
-              `${process.env.SUPABASE_URL}/storage/v1/object/public/zanzar-images/`,
+              `${process.env.SUPABASE_URL}/storage/v1/object/public/${this.bucketName}/`,
               '',
             );
             const { data, error } = await this.supabase.storage
-              .from('zanzar-images')
+              .from(this.bucketName)
               .createSignedUrl(mediaPath, 3600); // 1 hour expiration
 
             if (error) {
@@ -194,7 +195,7 @@ export class AdvertisementsManagementService {
           const mediaPath = existingAd.mediaUrl.split('/').slice(3).join('/');
 
           const { error: deleteError } = await this.supabase.storage
-            .from('zanzar-images')
+            .from(this.bucketName)
             .remove([mediaPath]);
 
           if (deleteError) {
@@ -249,7 +250,7 @@ export class AdvertisementsManagementService {
 
       // Upload file to Supabase storage
       const { error: uploadError } = await this.supabase.storage
-        .from('zanzar-images')
+        .from(this.bucketName)
         .upload(filePath, file.buffer, {
           contentType: file.mimetype,
         });
@@ -261,7 +262,7 @@ export class AdvertisementsManagementService {
       // Get public URL
       const {
         data: { publicUrl },
-      } = this.supabase.storage.from('zanzar-images').getPublicUrl(filePath);
+      } = this.supabase.storage.from(this.bucketName).getPublicUrl(filePath);
 
       return publicUrl;
     } catch (error) {
@@ -286,7 +287,7 @@ export class AdvertisementsManagementService {
         // Upload arquivo para o Supabase
         const { data: uploadData, error: uploadError } =
           await this.supabase.storage
-            .from('zanzar-images')
+            .from(this.bucketName)
             .upload(fileName, file.buffer, {
               contentType: file.mimetype,
             });
@@ -300,7 +301,7 @@ export class AdvertisementsManagementService {
 
         // Get public URL
         const { data: publicUrlData } = this.supabase.storage
-          .from('zanzar-images')
+          .from(this.bucketName)
           .getPublicUrl(uploadData?.path);
 
         mediaUrl = publicUrlData?.publicUrl;
@@ -392,7 +393,7 @@ export class AdvertisementsManagementService {
         // Upload file to Supabase
         const { data: uploadData, error: uploadError } =
           await this.supabase.storage
-            .from('zanzar-images')
+            .from(this.bucketName)
             .upload(fileName, file.buffer, {
               contentType: file.mimetype,
             });
@@ -407,7 +408,7 @@ export class AdvertisementsManagementService {
 
         // Get public URL
         const { data: publicUrlData } = this.supabase.storage
-          .from('zanzar-images')
+          .from(this.bucketName)
           .getPublicUrl(uploadData?.path);
 
         mediaUrl = publicUrlData?.publicUrl;

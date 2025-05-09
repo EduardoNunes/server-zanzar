@@ -8,6 +8,7 @@ export class UserCartService {
     process.env.SUPABASE_URL,
     process.env.SUPABASE_KEY,
   );
+  private bucketName = process.env.BUCKET_MIDIAS;
 
   constructor(private readonly prisma: PrismaService) {}
 
@@ -120,7 +121,7 @@ export class UserCartService {
           const signedImageUrls = await Promise.all(
             item.productVariant.images.map(async (image) => {
               let bucketPath = image.url.replace(
-                `${process.env.SUPABASE_URL}/storage/v1/object/public/zanzar-images/`,
+                `${process.env.SUPABASE_URL}/storage/v1/object/public/${this.bucketName}/`,
                 '',
               );
 
@@ -129,7 +130,7 @@ export class UserCartService {
               }
 
               const { data, error } = await this.supabase.storage
-                .from('zanzar-images')
+                .from(this.bucketName)
                 .createSignedUrl(bucketPath, 3600);
 
               if (error || !data?.signedUrl) {

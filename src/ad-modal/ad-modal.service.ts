@@ -9,6 +9,7 @@ export class AdModalService {
     process.env.SUPABASE_URL,
     process.env.SUPABASE_KEY,
   );
+  private bucketName = process.env.BUCKET_MIDIAS;
 
   constructor(private prisma: PrismaService) {}
 
@@ -148,11 +149,11 @@ export class AdModalService {
         if (ad.mediaUrl) {
           try {
             const mediaPath = ad.mediaUrl.replace(
-              `${process.env.SUPABASE_URL}/storage/v1/object/public/zanzar-images/`,
+              `${process.env.SUPABASE_URL}/storage/v1/object/public/${this.bucketName}/`,
               '',
             );
             const { data, error } = await this.supabase.storage
-              .from('zanzar-images')
+              .from(this.bucketName)
               .createSignedUrl(mediaPath, 3600);
 
             if (error) {
