@@ -21,6 +21,7 @@ import { InviteManagementModule } from './invite-management/invite-management.mo
 import { StoreModule } from './store/store.module';
 import { ProductModule } from './product/product.module';
 import { UserCartModule } from './user-cart/user-cart.module';
+import { PurchasesModule } from './purchases/purchases.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { UserCartModule } from './user-cart/user-cart.module';
     StoreModule,
     ProductModule,
     UserCartModule,
+    PurchasesModule,
   ],
   controllers: [AppController, ChatController],
   providers: [AppService, ChatService],
