@@ -403,7 +403,7 @@ model OrderItem {
   productVariantSizeId String
   quantity             Int
   priceAtPurchase      Int
-  priceAtPurchaseBase  Int
+  priceAtPurchaseBase  Int    @default(0)
   storeId              String
   status               String // 'PAGO', 'ENVIADO' 'ENTREGUE', 'CANCELADO'
 
