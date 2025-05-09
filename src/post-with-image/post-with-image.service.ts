@@ -483,12 +483,12 @@ export class PostsService {
         select: { id: true },
         where: { id: profileId },
       });
-
+  
       if (!profile) {
         throw new HttpException('Perfil não encontrado.', HttpStatus.NOT_FOUND);
       }
-
-      // Busca o post específico pelo ID
+  
+      // Busca o post com os dados essenciais
       const post = await this.prisma.posts.findUnique({
         where: { id: postId },
         select: {
@@ -503,17 +503,6 @@ export class PostsService {
               avatarUrl: true,
             },
           },
-          likes: {
-            select: {
-              id: true,
-              profile: {
-                select: {
-                  id: true,
-                  username: true,
-                },
-              },
-            },
-          },
           _count: {
             select: {
               likes: true,
@@ -522,61 +511,61 @@ export class PostsService {
           },
         },
       });
-
+  
       if (!post) {
         throw new HttpException('Post não encontrado.', HttpStatus.NOT_FOUND);
       }
-
-      // Gera URLs assinadas para o post e o avatar do perfil
-      let signedMediaUrl = null;
-      let signedAvatarUrl = null;
-
+  
+      // Verifica se o usuário logado curtiu o post
+      const like = await this.prisma.likes.findFirst({
+        where: {
+          postId: post.id,
+          profileId: profile.id,
+        },
+        select: { id: true },
+      });
+  
+      const likedByLoggedInUser = !!like;
+  
+      // Geração da URL assinada da imagem do post
+      let signedMediaUrl: string | null = null;
       if (post.mediaUrl) {
         const mediaPath = post.mediaUrl.replace(
           `${process.env.SUPABASE_URL}/storage/v1/object/public/${this.bucketName}/`,
           '',
         );
-        const { data: mediaData, error: mediaError } =
-          await this.supabase.storage
-            .from(this.bucketName)
-            .createSignedUrl(mediaPath, 3600);
-
-        if (mediaError) {
-          console.error(
-            `Erro ao gerar URL assinada para o post ${post.id}:`,
-            mediaError,
-          );
+  
+        const { data, error } = await this.supabase.storage
+          .from(this.bucketName)
+          .createSignedUrl(mediaPath, 3600);
+  
+        if (!error && data?.signedUrl) {
+          signedMediaUrl = data.signedUrl;
         } else {
-          signedMediaUrl = mediaData.signedUrl;
+          console.error('Erro ao gerar URL assinada do post:', error);
         }
       }
-
+  
+      // Geração da URL assinada do avatar do autor do post
+      let signedAvatarUrl: string | null = null;
       if (post.profile.avatarUrl) {
         const avatarPath = post.profile.avatarUrl.replace(
-          `${process.env.SUPABASE_URL}/storage/v1/object/public/`,
+          `${process.env.SUPABASE_URL}/storage/v1/object/public/${this.bucketName}/`,
           '',
         );
-        const { data: avatarData, error: avatarError } =
-          await this.supabase.storage
-            .from(this.bucketName)
-            .createSignedUrl(avatarPath, 3600);
-
-        if (avatarError) {
-          console.error(
-            `Erro ao gerar URL assinada para o avatar do perfil:`,
-            avatarError,
-          );
+  
+        const { data, error } = await this.supabase.storage
+          .from(this.bucketName)
+          .createSignedUrl(avatarPath, 3600);
+  
+        if (!error && data?.signedUrl) {
+          signedAvatarUrl = data.signedUrl;
         } else {
-          signedAvatarUrl = avatarData.signedUrl;
+          console.error('Erro ao gerar URL assinada do avatar:', error);
         }
       }
-
-      // Verifica se o usuário logado curtiu o post
-      const likedByLoggedInUser = post.likes.some(
-        (like) => like.profile.id === profile.id,
-      );
-
-      // Retorna o post processado
+  
+      // Retorna os dados organizados
       return {
         id: post.id,
         mediaUrl: signedMediaUrl,
@@ -585,7 +574,7 @@ export class PostsService {
         profile: {
           profileId: post.profile.id,
           username: post.profile.username,
-          ...(signedAvatarUrl && { avatarUrl: signedAvatarUrl }),
+          avatarUrl: signedAvatarUrl,
         },
         likedByLoggedInUser,
         likeCount: post._count.likes,
@@ -599,6 +588,7 @@ export class PostsService {
       );
     }
   }
+  
 
   async loadCategories(profileId: string) {
     try {
