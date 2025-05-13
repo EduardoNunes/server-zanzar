@@ -99,6 +99,7 @@ export class ProfileController {
       fullName: string;
       birthDate: string;
       phoneNumber: string;
+      cpf: string;
       addressId: string;
       address: {
         street: string;
@@ -118,6 +119,7 @@ export class ProfileController {
       completeData.fullName,
       completeData.birthDate,
       completeData.phoneNumber,
+      completeData.cpf,
       completeData.addressId,
       completeData.address.street,
       completeData.address.number,

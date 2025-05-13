@@ -556,6 +556,7 @@ export class ProfileService {
     fullName: string,
     birthDate: string,
     phoneNumber: string,
+    cpf: string,
     addressId: string,
     street: string,
     number: string,
@@ -605,6 +606,7 @@ export class ProfileService {
             fullName,
             birthDate: new Date(birthDate),
             phoneNumber,
+            cpf,
             addressId: address.id,
           },
         });
