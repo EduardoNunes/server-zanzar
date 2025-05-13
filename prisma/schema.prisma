@@ -75,6 +75,7 @@ model Profiles {
   fullName         String?
   birthDate        DateTime?
   phoneNumber      String?
+  cpf              String?            @unique
   posts            Posts[]
   likes            Likes[]
   comments         Comments[]
