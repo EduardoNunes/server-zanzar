@@ -124,7 +124,9 @@ export class ChatGateway {
 
   // Gerenciar conexões de sala
   handleConnection(client: Socket) {
-    console.log(`🔌 Cliente conectado: ${client.id}`);
+    console.log(
+      `🔌 Cliente conectado: ${client.id}, UserID: ${client.handshake.query.userId}`,
+    );
   }
 
   handleDisconnect(client: Socket) {

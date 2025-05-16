@@ -475,7 +475,7 @@ export class ChatService {
 
   async markConversationAsRead(conversationId: string, profileId: string) {
     try {
-      // Get all unread messages in the conversation for this profile
+      // Obter todas as mensagens não lidas na conversa para este perfil
       const unreadMessages = await this.prisma.chatMessages.findMany({
         where: {
           conversationId,
@@ -487,16 +487,28 @@ export class ChatService {
         },
       });
 
-      // Mark each unread message as read
+      // Marcar cada mensagem não lida como lida
       const readPromises = unreadMessages.map(async (message) => {
-        // Create a read status entry for this message and profile
-        await this.prisma.chatReadStatus.create({
-          data: {
-            messageId: message.id,
-            profileId,
-            readAt: new Date(),
+        // Verificar se já existe um registro de status de leitura
+        const existingReadStatus = await this.prisma.chatReadStatus.findUnique({
+          where: {
+            messageId_profileId: {
+              messageId: message.id,
+              profileId,
+            },
           },
         });
+
+        // Criar o registro apenas se ele não existir
+        if (!existingReadStatus) {
+          await this.prisma.chatReadStatus.create({
+            data: {
+              messageId: message.id,
+              profileId,
+              readAt: new Date(),
+            },
+          });
+        }
       });
 
       await Promise.all(readPromises);
