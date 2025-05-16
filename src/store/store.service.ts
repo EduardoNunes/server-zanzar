@@ -71,8 +71,17 @@ export class StoreService {
         );
       }
 
+      const sanitizeFileName = (name: string) =>
+        name
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-zA-Z0-9.\-_]/g, '')
+          .toLowerCase();
+
+      const logoCleanOriginalName = sanitizeFileName(logo.originalname);
+
       // Upload do LOGO na pasta logoPath = slug-profileId/data-nomeDaLogo
-      const logoPath = `stores/${name.toLowerCase().replace(/\s+/g, '-')}-${profileId}/${Date.now()}-${logo.originalname}`;
+      const logoPath = `stores/${name.toLowerCase().replace(/\s+/g, '-')}-${profileId}/${Date.now()}-${logoCleanOriginalName}`;
       const { data: logoUploadData, error: logoUploadError } =
         await this.supabase.storage
           .from(this.bucketName)
@@ -92,8 +101,10 @@ export class StoreService {
         .getPublicUrl(logoUploadData.path);
       const logoUrl = logoUrlData?.publicUrl;
 
+      const bannerCleanOriginalName = sanitizeFileName(logo.originalname);
+
       // Upload do BANNER
-      const bannerPath = `stores/${name.toLowerCase().replace(/\s+/g, '-')}-${profileId}/${Date.now()}-${banner.originalname}`;
+      const bannerPath = `stores/${name.toLowerCase().replace(/\s+/g, '-')}-${profileId}/${Date.now()}-${bannerCleanOriginalName}`;
       const { data: bannerUploadData, error: bannerUploadError } =
         await this.supabase.storage
           .from(this.bucketName)
