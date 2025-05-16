@@ -19,6 +19,9 @@ export class PurchasesService {
       where: { profileId },
       skip: offset,
       take: limit,
+      orderBy: {
+        createdAt: 'desc',
+      },
       include: {
         items: {
           include: {
