@@ -22,9 +22,12 @@ import { StoreModule } from './store/store.module';
 import { ProductModule } from './product/product.module';
 import { UserCartModule } from './user-cart/user-cart.module';
 import { PurchasesModule } from './purchases/purchases.module';
+import { AsaasModule } from './asaas/asaas.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     AuthModule,
     RegisterModule,
     PostsModule,
@@ -44,6 +47,7 @@ import { PurchasesModule } from './purchases/purchases.module';
     ProductModule,
     UserCartModule,
     PurchasesModule,
+    AsaasModule
   ],
   controllers: [AppController, ChatController],
   providers: [AppService, ChatService],
