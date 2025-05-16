@@ -19,7 +19,6 @@ export class InviteGateway {
 
   @SubscribeMessage('get-unread-invites')
   async handleGetUnreadInvites(client: any, profileId: string) {
-
     const { invites } = await this.prisma.profiles.findUnique({
       where: {
         id: profileId,
