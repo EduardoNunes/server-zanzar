@@ -501,6 +501,7 @@ export class ProfileService {
           fullName: true,
           birthDate: true,
           phoneNumber: true,
+          cpf: true,
           addressId: true,
           address: {
             select: {
@@ -538,6 +539,7 @@ export class ProfileService {
         fullName: userData.fullName,
         birthDate: formattedBirthDate,
         phoneNumber: userData.phoneNumber,
+        cpf: userData.cpf,
         addressId: userData.addressId,
         address: formattedAddress,
       };
