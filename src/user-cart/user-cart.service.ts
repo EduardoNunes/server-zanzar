@@ -173,11 +173,21 @@ export class UserCartService {
       );
     }
 
+    let totalQuantity = 0;
+    let totalPrice = 0;
+    let totalPriceBase = 0;
+    let order = null;
+
     try {
       await this.prisma.$transaction(async (tx) => {
-        const order = await tx.order.create({
+        order = await tx.order.create({
           data: {
             profileId,
+            paymentMethod: 'PIX',
+            paymentStatus: 'PENDENTE',
+            quantityItems: 0,
+            totalPrice: 0,
+            totalPriceBase: 0,
           },
         });
 
@@ -205,6 +215,14 @@ export class UserCartService {
             );
           }
 
+          const priceAtPurchase = variantSize.price * quantity;
+          const priceAtPurchaseBase = variantSize.basePrice * quantity;
+
+          // Atualiza os totais
+          totalQuantity += quantity;
+          totalPrice += priceAtPurchase;
+          totalPriceBase += priceAtPurchaseBase;
+
           await tx.orderItem.create({
             data: {
               order: { connect: { id: order.id } },
@@ -215,7 +233,7 @@ export class UserCartService {
               userStore: {
                 connect: { id: variantSize.variant.product.userStoreId },
               },
-              status: 'PAGO',
+              status: 'PENDENTE',
             },
           });
 
@@ -287,11 +305,23 @@ export class UserCartService {
             where: { id: cartId },
           });
         }
+
+        // Atualiza os valores totais no pedido
+        await tx.order.update({
+          where: { id: order.id },
+          data: {
+            quantityItems: totalQuantity,
+            totalPrice,
+            totalPriceBase,
+          },
+        });
       });
 
-      return { success: true };
+      return { success: true, totalPrice, order };
     } catch (error) {
       throw new Error('Error buying products: ' + error.message);
     }
   }
+
+  async cancelExpiredPixOrders() {}
 }
