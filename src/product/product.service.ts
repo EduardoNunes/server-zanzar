@@ -98,7 +98,7 @@ export class ProductService {
           const { data: uploadData, error } = await this.supabase.storage
             .from(this.bucketName)
             .upload(
-              `stores/${userStore.slug}-${userStore.profileId}/${userStoreId}-${product.name}-${Date.now()}`,
+              `stores/${userStore.slug}-${userStore.profileId}/${userStoreId}-${Date.now()}`,
               image.buffer,
               {
                 contentType: image.mimetype,
