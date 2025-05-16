@@ -391,11 +391,18 @@ model UserCart {
 }
 
 model Order {
-  id        String      @id @default(uuid())
-  profileId String
-  createdAt DateTime    @default(now())
-  profile   Profiles    @relation(fields: [profileId], references: [id])
-  items     OrderItem[]
+  id             String   @id @default(uuid())
+  profileId      String
+  createdAt      DateTime @default(now())
+  quantityItems  Int
+  totalPrice     Int
+  totalPriceBase Int
+  paymentMethod  String
+  paymentStatus  String
+  asaasPaymentId String?  @unique
+
+  profile Profiles    @relation(fields: [profileId], references: [id])
+  items   OrderItem[]
 }
 
 model OrderItem {
@@ -406,7 +413,8 @@ model OrderItem {
   priceAtPurchase      Int
   priceAtPurchaseBase  Int    @default(0)
   storeId              String
-  status               String // 'PAGO', 'ENVIADO' 'ENTREGUE', 'CANCELADO'
+  status               String // 'PENDENTE', 'PAGO', 'ENVIADO', 'ENTREGUE', 'CANCELADO'
+  paymentMethod        String @default("PIX")
 
   order              Order              @relation(fields: [orderId], references: [id])
   productVariantSize ProductVariantSize @relation(fields: [productVariantSizeId], references: [id])
