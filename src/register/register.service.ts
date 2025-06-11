@@ -44,7 +44,7 @@ export class RegisterService {
       }
 
       // AQUI É A VALIDAÇÃO DE CONVITE.
-      const existInvite = await this.prisma.invite.findFirst({
+      /* const existInvite = await this.prisma.invite.findFirst({
         where: { email },
       });
 
@@ -53,7 +53,7 @@ export class RegisterService {
           'Este email não foi convidado, busque um anfitrião.',
           HttpStatus.BAD_REQUEST,
         );
-      }
+      } */
 
       const formattedUsername = username
         .toLowerCase()
@@ -88,12 +88,12 @@ export class RegisterService {
         });
 
         // RETIRAR PARA USUÁRIO PRIMORDIAL
-        const inviteAccepted = await prisma.invite.update({
+        /* const inviteAccepted = await prisma.invite.update({
           where: { id: existInvite.id },
           data: { status: 'accepted' },
-        });
+        }); */
 
-        return { newUser, newProfile, inviteAccepted };
+        return { newUser, newProfile/* , inviteAccepted */ };
       });
 
       return {
