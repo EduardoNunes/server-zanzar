@@ -41,7 +41,7 @@ export class PostsController {
       throw new HttpException('Arquivo não enviado.', HttpStatus.BAD_REQUEST);
     }
 
-    const filePath = `users/${profileId}/${Date.now()}_${file.originalname}`;
+    const filePath = `users/${profileId}/${Date.now()}-${file.mimetype}`;
 
     return this.postsService.createPostWithMedia(
       file,
