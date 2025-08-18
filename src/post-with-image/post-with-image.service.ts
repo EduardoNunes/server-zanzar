@@ -29,6 +29,18 @@ export class PostsService {
     selectedCategory: string,
     order: number,
   ) {
+    console.log('====== DEBUG SUPABASE ENV ======');
+    console.log('SUPABASE_URL:', process.env.SUPABASE_URL);
+    console.log(
+      'SERVICE_ROLE_KEY length:',
+      process.env.SUPABASE_SERVICE_ROLE_KEY?.length,
+    );
+    console.log(
+      'SERVICE_ROLE_KEY preview:',
+      process.env.SUPABASE_SERVICE_ROLE_KEY?.slice(0, 15),
+    );
+    console.log('================================');
+
     try {
       const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png'];
       const allowedVideoTypes = ['video/mp4'];
