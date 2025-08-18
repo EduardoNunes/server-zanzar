@@ -11,7 +11,7 @@ import { PrismaService } from '../prisma/prisma.service';
 export class ChatService {
   private supabase = createClient(
     process.env.SUPABASE_URL,
-    process.env.SUPABASE_KEY,
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
   );
   private bucketName = process.env.BUCKET_MIDIAS;
 

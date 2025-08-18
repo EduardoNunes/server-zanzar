@@ -8,7 +8,7 @@ import { ValidationError } from 'yup';
 export class ProductService {
   private supabase = createClient(
     process.env.SUPABASE_URL,
-    process.env.SUPABASE_KEY,
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
   );
   private bucketName = process.env.BUCKET_MIDIAS;
 
@@ -164,7 +164,7 @@ export class ProductService {
               data: {
                 avaliableQuantity: {
                   increment: Number(size.stock),
-                }
+                },
               },
             });
           }

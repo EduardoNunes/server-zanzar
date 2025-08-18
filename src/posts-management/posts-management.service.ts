@@ -6,12 +6,10 @@ import { createClient } from '@supabase/supabase-js';
 export class PostsManagementService {
   private supabase = createClient(
     process.env.SUPABASE_URL,
-    process.env.SUPABASE_KEY,
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
   );
 
-  constructor(
-    private prisma: PrismaService,
-  ) { }
+  constructor(private prisma: PrismaService) {}
 
   async getPostsTotal() {
     return await this.prisma.posts.count();
@@ -24,9 +22,9 @@ export class PostsManagementService {
     return await this.prisma.posts.count({
       where: {
         createdAt: {
-          gte: twentyFourHoursAgo
-        }
-      }
+          gte: twentyFourHoursAgo,
+        },
+      },
     });
   }
 
@@ -37,9 +35,9 @@ export class PostsManagementService {
     return await this.prisma.posts.count({
       where: {
         createdAt: {
-          gte: sevenDaysAgo
-        }
-      }
+          gte: sevenDaysAgo,
+        },
+      },
     });
   }
 
@@ -50,9 +48,9 @@ export class PostsManagementService {
     return await this.prisma.posts.count({
       where: {
         createdAt: {
-          gte: thirtyDaysAgo
-        }
-      }
+          gte: thirtyDaysAgo,
+        },
+      },
     });
   }
 
@@ -69,27 +67,27 @@ export class PostsManagementService {
           createdAt: true,
           profile: {
             select: {
-              username: true
-            }
+              username: true,
+            },
           },
           likes: {
             select: {
-              id: true
-            }
+              id: true,
+            },
           },
           comments: {
             select: {
-              id: true
-            }
-          }
+              id: true,
+            },
+          },
         },
         orderBy: {
-          createdAt: 'desc'
+          createdAt: 'desc',
         },
         skip,
-        take: postsPerPage
+        take: postsPerPage,
       }),
-      this.prisma.posts.count()
+      this.prisma.posts.count(),
     ]);
 
     // Process posts to generate signed URLs
@@ -134,8 +132,8 @@ export class PostsManagementService {
         total,
         page,
         totalPages: Math.ceil(total / postsPerPage),
-        hasMore: page * postsPerPage < total
-      }
+        hasMore: page * postsPerPage < total,
+      },
     };
   }
 }

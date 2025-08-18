@@ -6,7 +6,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 export class PurchasesService {
   private supabase = createClient(
     process.env.SUPABASE_URL,
-    process.env.SUPABASE_KEY,
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
   );
   private bucketName = process.env.BUCKET_MIDIAS;
 

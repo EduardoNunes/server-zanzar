@@ -12,7 +12,7 @@ import { NotificationsGateway } from 'src/notifications/notifications.gateway';
 export class PostsService {
   private supabase = createClient(
     process.env.SUPABASE_URL,
-    process.env.SUPABASE_KEY,
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
   );
   private bucketName = process.env.BUCKET_MIDIAS;
 
@@ -483,11 +483,11 @@ export class PostsService {
         select: { id: true },
         where: { id: profileId },
       });
-  
+
       if (!profile) {
         throw new HttpException('Perfil não encontrado.', HttpStatus.NOT_FOUND);
       }
-  
+
       // Busca o post com os dados essenciais
       const post = await this.prisma.posts.findUnique({
         where: { id: postId },
@@ -511,11 +511,11 @@ export class PostsService {
           },
         },
       });
-  
+
       if (!post) {
         throw new HttpException('Post não encontrado.', HttpStatus.NOT_FOUND);
       }
-  
+
       // Verifica se o usuário logado curtiu o post
       const like = await this.prisma.likes.findFirst({
         where: {
@@ -524,9 +524,9 @@ export class PostsService {
         },
         select: { id: true },
       });
-  
+
       const likedByLoggedInUser = !!like;
-  
+
       // Geração da URL assinada da imagem do post
       let signedMediaUrl: string | null = null;
       if (post.mediaUrl) {
@@ -534,18 +534,18 @@ export class PostsService {
           `${process.env.SUPABASE_URL}/storage/v1/object/public/${this.bucketName}/`,
           '',
         );
-  
+
         const { data, error } = await this.supabase.storage
           .from(this.bucketName)
           .createSignedUrl(mediaPath, 3600);
-  
+
         if (!error && data?.signedUrl) {
           signedMediaUrl = data.signedUrl;
         } else {
           console.error('Erro ao gerar URL assinada do post:', error);
         }
       }
-  
+
       // Geração da URL assinada do avatar do autor do post
       let signedAvatarUrl: string | null = null;
       if (post.profile.avatarUrl) {
@@ -553,18 +553,18 @@ export class PostsService {
           `${process.env.SUPABASE_URL}/storage/v1/object/public/${this.bucketName}/`,
           '',
         );
-  
+
         const { data, error } = await this.supabase.storage
           .from(this.bucketName)
           .createSignedUrl(avatarPath, 3600);
-  
+
         if (!error && data?.signedUrl) {
           signedAvatarUrl = data.signedUrl;
         } else {
           console.error('Erro ao gerar URL assinada do avatar:', error);
         }
       }
-  
+
       // Retorna os dados organizados
       return {
         id: post.id,
@@ -588,7 +588,6 @@ export class PostsService {
       );
     }
   }
-  
 
   async loadCategories(profileId: string) {
     try {
