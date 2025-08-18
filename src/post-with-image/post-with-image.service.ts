@@ -38,6 +38,7 @@ export class PostsService {
       console.log('file.mimetype:', file.mimetype);
       console.log('filePath:', filePath);
 
+      const sanitizedFilePath = filePath.replace(/[^a-zA-Z0-9\-_.\/]/g, '_');
 
       if (
         !allowedImageTypes.includes(file.mimetype) &&
@@ -70,7 +71,7 @@ export class PostsService {
       const { data: uploadData, error: uploadError } =
         await this.supabase.storage
           .from(this.bucketName)
-          .upload(filePath, file.buffer, {
+          .upload(sanitizedFilePath, file.buffer, {
             contentType: file.mimetype,
           });
 
