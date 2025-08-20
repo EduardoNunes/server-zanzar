@@ -624,4 +624,71 @@ export class ProfileService {
       });
     }
   }
+
+  async updateUsername(profileId: string, newUsername: string, token: string) {
+    // Validações iniciais de entrada de caracteres
+    if (/[^a-z0-9_]/g.test(newUsername)) {
+      throw new BadRequestException(
+        'O nome de usuário só pode conter letras minúsculas, números e underslines.',
+      );
+    }
+
+    try {
+      console.log('ID', profileId, 'Username', newUsername, 'Token', token);
+
+      if (!token) {
+        throw new BadRequestException('Token de autorização ausente.');
+      }
+
+      const decodedToken: any = jwt.verify(token, this.jwtToken);
+      const userProfile = await this.prisma.profiles.findUnique({
+        where: { userId: decodedToken.sub },
+      });
+
+      if (!userProfile || userProfile.id !== profileId) {
+        throw new BadRequestException(
+          'Perfil não encontrado ou não autorizado.',
+        );
+      }
+
+      const existingProfile = await this.prisma.profiles.findUnique({
+        where: { username: newUsername },
+      });
+
+      if (existingProfile && existingProfile.id !== profileId) {
+        throw new BadRequestException('Nome de usuário já está em uso.');
+      }
+
+      // Check last username update time
+      if (userProfile.lastUsernameUpdate) {
+        const lastUpdate = new Date(userProfile.lastUsernameUpdate);
+        const now = new Date();
+        const diff = now.getTime() - lastUpdate.getTime();
+        const diffInHours = diff / (1000 * 60 * 60);
+
+        if (diffInHours < 24) {
+          throw new BadRequestException(
+            'Você só pode alterar seu nome de usuário a cada 24 horas.',
+          );
+        }
+      }
+
+      const updatedProfile = await this.prisma.profiles.update({
+        where: { id: profileId },
+        data: { username: newUsername, lastUsernameUpdate: new Date() },
+      });
+
+      return {
+        message: 'Nome de usuário atualizado com sucesso.',
+        profile: updatedProfile,
+      };
+    } catch (error) {
+      console.error('Erro ao atualizar nome de usuário:', error);
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        message: error.message || 'Erro desconhecido',
+        error: error.name,
+      });
+    }
+  }
 }

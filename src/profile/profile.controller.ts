@@ -131,4 +131,19 @@ export class ProfileController {
       completeData.address.country,
     );
   }
+
+  @Put('update-username/:profileId')
+  async updateUsername(
+    @Param('profileId') profileId: string,
+    @Body('newUsername') newUsername: string,
+    @Headers('authorization') authorizationHeader: string,
+  ) {
+    const token = authorizationHeader?.replace('Bearer ', '');
+    
+    if (!token) {
+      throw new BadRequestException('Token de autorização ausente.');
+    }
+
+    return this.profileService.updateUsername(profileId, newUsername, token);
+  }
 }
