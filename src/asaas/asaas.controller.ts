@@ -72,9 +72,9 @@ export class AsaasController {
         const paymentId = payment.id;
 
         const response = await this.asaasService.markAsPaid(paymentId);
-
-        const profileIdSocket = response.profileId
-        this.asaasGateway.notifyPaymentSuccess(profileIdSocket);
+    console.log("STATUS DO PAGAMENTO...", response.profileId);
+        const profileId = response.profileId
+        this.asaasGateway.notifyPaymentSuccess(profileId);
 
         return { received: true };
       }

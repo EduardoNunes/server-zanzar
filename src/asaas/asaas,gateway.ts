@@ -1,23 +1,43 @@
-import { WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
+import {
+  WebSocketGateway,
+  WebSocketServer,
+  OnGatewayConnection,
+  OnGatewayDisconnect,
+  ConnectedSocket,
+} from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
+import { WebsocketManager } from '../common/websocket/websocket.manager';
 
 @WebSocketGateway({
   cors: {
     origin: '*',
   },
 })
-export class AsaasGateway {
+export class AsaasGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
-  notifyPaymentSuccess(profileIdSocket: string) {
-    console.log('PROFILE ID GATEWAY', profileIdSocket);
-    this.server.to(profileIdSocket).emit('payment-confirmed');
+  constructor(private readonly wsManager: WebsocketManager) {}
+
+  handleConnection(@ConnectedSocket() client: Socket) {
+    const profileId = client.handshake.auth?.profileId as string;
+    if (!profileId) {
+      console.warn(`Socket conectado sem profileId: ${client.id}`);
+      return;
+    }
+    this.wsManager.addClient(profileId, client);
+    console.log(`Socket conectado com profileId: ${profileId}`);
   }
 
-  handleConnection(client: Socket) {
-    const profileIdSocket = String(client.handshake.query.profileIdSocket);
-    console.log('Socket conectado com profileIdSocket:', profileIdSocket);
-    client.join(profileIdSocket);
+  handleDisconnect(@ConnectedSocket() client: Socket) {
+    const profileId = client.handshake.auth?.profileId as string;
+    if (!profileId) return;
+    this.wsManager.removeClient(profileId, client);
+    console.log(`Socket desconectado com profileId: ${profileId}`);
+  }
+
+  notifyPaymentSuccess(profileId: string) {
+    console.log('PROFILE ID GATEWAY PAGAMENTO', profileId);
+    this.wsManager.emitToProfile(profileId, 'payment-confirmed', {});
   }
 }

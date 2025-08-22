@@ -4,6 +4,7 @@ import { AsaasService } from './asaas.service';
 import { AsaasController } from './asaas.controller';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { AsaasGateway } from './asaas,gateway';
+import { WebSocketModule } from 'src/common/websocket/websocket.module';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { AsaasGateway } from './asaas,gateway';
         baseURL: 'https://api-sandbox.asaas.com/v3',
       }),
     }),
+    WebSocketModule,
   ],
   providers: [AsaasService, PrismaService, AsaasGateway],
   exports: [AsaasService],

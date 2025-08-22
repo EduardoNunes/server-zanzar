@@ -210,7 +210,10 @@ export class AsaasService {
         },
       });
 
-      return updatedOrder;
+      return {
+        ...updatedOrder,
+        profileId: updatedOrder.profileId,
+      };
     } catch (error) {
       console.error('Erro ao marcar pagamento como PAGO:', error.message);
       throw new HttpException(
