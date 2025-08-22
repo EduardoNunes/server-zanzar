@@ -3,9 +3,10 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { ChatController } from './chat.controller';
 import { ChatGateway } from './chat.gatway';
 import { ChatService } from './chat.service';
+import { WebSocketModule } from 'src/common/websocket/websocket.module';
 
 @Module({
-  imports: [],
+  imports: [WebSocketModule],
   controllers: [ChatController],
   providers: [ChatService, ChatGateway, PrismaService],
 })

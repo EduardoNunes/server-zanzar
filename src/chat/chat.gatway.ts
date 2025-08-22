@@ -5,16 +5,42 @@ import {
   SubscribeMessage,
   MessageBody,
   ConnectedSocket,
+  OnGatewayConnection,
+  OnGatewayDisconnect,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { ChatService } from './chat.service';
+import { WebsocketManager } from '../common/websocket/websocket.manager';
 
 @WebSocketGateway({ cors: true })
-export class ChatGateway {
+export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
-  constructor(private readonly chatService: ChatService) {}
+  constructor(
+    private readonly chatService: ChatService,
+    private readonly wsManager: WebsocketManager, // injetamos o manager
+  ) {}
+
+  // 🔌 Conexão
+  handleConnection(client: Socket) {
+    const profileId = client.handshake.query.userId as string;
+    if (profileId) {
+      this.wsManager.addClient(profileId, client);
+      console.log(`Cliente conectado: ${client.id}, ProfileID: ${profileId}`);
+    }
+  }
+
+  // ❌ Desconexão
+  handleDisconnect(client: Socket) {
+    const profileId = client.handshake.query.userId as string;
+    if (profileId) {
+      this.wsManager.removeClient(profileId, client);
+      console.log(
+        `Cliente desconectado: ${client.id}, ProfileID: ${profileId}`,
+      );
+    }
+  }
 
   @SubscribeMessage('joinChat')
   handleJoinChat(
@@ -25,7 +51,6 @@ export class ChatGateway {
     console.log(`Client ${client.id} joined chat ${data.conversationId}`);
   }
 
-  // Enviar mensagem
   @SubscribeMessage('sendMessage')
   async handleSendMessage(
     @MessageBody()
@@ -34,7 +59,10 @@ export class ChatGateway {
   ) {
     const message = await this.chatService.createMessage(data);
 
-    // Obter os participantes da conversa
+    // Emitir para a sala específica
+    this.server.to(data.conversationId).emit('newMessage', message);
+
+    // Emitir para o destinatário específico usando o WebsocketManager
     const conversation = await this.chatService.getConversation(
       data.conversationId,
     );
@@ -42,42 +70,19 @@ export class ChatGateway {
       (p) => p.profileId !== data.profileId,
     )?.profileId;
 
-    // Marcar mensagens como lidas apenas para o remetente
-    await this.chatService.markConversationAsRead(
-      data.conversationId,
-      data.profileId,
-    );
-
-    // Emitir para a sala específica
-    this.server.to(data.conversationId).emit('newMessage', message);
-
-    // Emitir para o destinatário específico
     if (recipientId) {
-      // Emitir para todos os sockets do destinatário
-      const recipientSockets = Array.from(
-        this.server.sockets.sockets.values(),
-      ).filter((socket) => socket.handshake.query.userId === recipientId);
+      this.wsManager.emitToProfile(recipientId, 'newMessage', message);
 
-      console.log('Sockets do destinatário:', recipientSockets.length);
-
-      recipientSockets.forEach((socket) => {
-        socket.emit('newMessage', message);
-        console.log('Evento newMessage emitido para socket:', socket.id);
-      });
-
-      // Obter o número de chats não lidos do destinatário
       const unreadChats =
         await this.chatService.getMyUnreadMessages(recipientId);
-      recipientSockets.forEach((socket) => {
-        socket.emit('unreadChatsCount', { count: unreadChats.length });
-        console.log('Evento unreadChatsCount emitido para socket:', socket.id);
+      this.wsManager.emitToProfile(recipientId, 'unreadChatsCount', {
+        count: unreadChats.length,
       });
     }
 
     return message;
   }
 
-  // Marcar mensagem como lida
   @SubscribeMessage('markAsRead')
   async handleMarkAsRead(
     @MessageBody() data: { messageId: string; profileId: string },
@@ -86,11 +91,10 @@ export class ChatGateway {
       data.messageId,
       data.profileId,
     );
-    this.server.emit('messageRead', readStatus);
+    this.wsManager.emitToProfile(data.profileId, 'messageRead', readStatus);
     return readStatus;
   }
 
-  // Marcar conversa como lida quando o usuário abre o chat
   @SubscribeMessage('openChat')
   async handleOpenChat(
     @MessageBody() data: { conversationId: string; profileId: string },
@@ -104,33 +108,20 @@ export class ChatGateway {
     return readResult;
   }
 
-  // Editar mensagem
   @SubscribeMessage('editMessage')
   async handleEditMessage(
     @MessageBody() data: { messageId: string; content: string },
   ) {
     const updatedMessage = await this.chatService.editMessage(data);
-    this.server.emit('messageEdited', updatedMessage);
+    this.wsManager.broadcast('messageEdited', updatedMessage);
     return updatedMessage;
   }
 
-  // Apagar mensagem
   @SubscribeMessage('deleteMessage')
   async handleDeleteMessage(@MessageBody() data: { messageId: string }) {
     const deletedMessage = await this.chatService.deleteMessage(data.messageId);
-    this.server.emit('messageDeleted', deletedMessage);
+    this.wsManager.broadcast('messageDeleted', deletedMessage);
     return deletedMessage;
-  }
-
-  // Gerenciar conexões de sala
-  handleConnection(client: Socket) {
-    console.log(
-      `🔌 Cliente conectado: ${client.id}, UserID: ${client.handshake.query.userId}`,
-    );
-  }
-
-  handleDisconnect(client: Socket) {
-    console.log(`Client disconnected: ${client.id}`);
   }
 
   @SubscribeMessage('getUnreadChatsCount')
