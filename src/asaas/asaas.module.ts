@@ -3,7 +3,7 @@ import { HttpModule } from '@nestjs/axios';
 import { AsaasService } from './asaas.service';
 import { AsaasController } from './asaas.controller';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { AsaasGateway } from './asaas,gateway';
+import { AsaasGateway } from './asaas.gateway';
 import { WebSocketModule } from 'src/common/websocket/websocket.module';
 
 @Module({

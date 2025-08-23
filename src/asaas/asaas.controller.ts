@@ -12,7 +12,7 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/auth/guard/JwtAuthGuard';
 import { AsaasService } from './asaas.service';
-import { AsaasGateway } from './asaas,gateway';
+import { AsaasGateway } from './asaas.gateway';
 
 @Controller('asaas')
 export class AsaasController {
@@ -72,8 +72,8 @@ export class AsaasController {
         const paymentId = payment.id;
 
         const response = await this.asaasService.markAsPaid(paymentId);
-    console.log("STATUS DO PAGAMENTO...", response.profileId);
-        const profileId = response.profileId
+        console.log('STATUS DO PAGAMENTO...', response.profileId);
+        const profileId = response.profileId;
         this.asaasGateway.notifyPaymentSuccess(profileId);
 
         return { received: true };
