@@ -34,6 +34,7 @@ export class WebsocketManager implements OnModuleInit, OnModuleDestroy {
       this.logger.warn(`Socket connected without profileId: ${client.id}`);
       return;
     }
+
     this.addClient(profileId, client);
   }
 
@@ -83,6 +84,10 @@ export class WebsocketManager implements OnModuleInit, OnModuleDestroy {
 
   /** 🔑 Emitir para um usuário/perfil específico */
   emitToProfile(profileId: string, event: string, payload: any) {
+/*     this.logger.debug(
+      `Emitindo para profileId=${profileId}, sockets=${this.clients.get(profileId)?.length || 0}`,
+    ); */
+
     if (!this.clients.has(profileId)) {
       this.logger.warn(`No active sockets for profileId=${profileId}`);
       return;
