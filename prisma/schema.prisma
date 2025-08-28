@@ -101,10 +101,12 @@ model Profiles {
   categories     Categories[] // Relação 1 para N com Categories
   favoriteStores FavoriteStore[]
 
-  addressId String?    @unique
-  address   Address?   @relation(fields: [addressId], references: [id])
-  userStore UserStore?
-  orders    Order[]
+  addressId     String?         @unique
+  address       Address?        @relation(fields: [addressId], references: [id])
+  userStore     UserStore?
+  orders        Order[]
+  StoreReview   StoreReview[]
+  ProductReview ProductReview[]
 }
 
 model Address {
@@ -290,6 +292,23 @@ model UserStore {
   orderItems  OrderItem[]
 }
 
+model StoreReview {
+  id          String   @id @default(uuid())
+  orderItemId String
+  profileId   String
+  rating      Int // de 1 a 5, por exemplo
+  comment     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relações
+  orderItem OrderItem @relation(fields: [orderItemId], references: [id])
+  profile   Profiles  @relation(fields: [profileId], references: [id])
+
+  // Garante que um usuário só pode avaliar uma vez cada item comprado
+  @@unique([orderItemId, profileId])
+}
+
 model FavoriteStore {
   id        String   @id @default(uuid())
   profileId String
@@ -316,6 +335,22 @@ model Product {
   productSubCategory   ProductSubCategory @relation(fields: [productSubCategoryId], references: [id])
   variations           ProductVariant[]
   cartItems            UserCart[]
+}
+
+model ProductReview {
+  id          String   @id @default(uuid())
+  orderItemId String
+  profileId   String
+  rating      Int
+  comment     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relações
+  orderItem OrderItem @relation(fields: [orderItemId], references: [id])
+  profile   Profiles  @relation(fields: [profileId], references: [id])
+
+  @@unique([orderItemId, profileId]) // usuário só pode avaliar o produto 1x por item comprado
 }
 
 model ProductCategory {
@@ -403,8 +438,8 @@ model Order {
   paymentStatus  String
   asaasPaymentId String?  @unique
 
-  profile Profiles    @relation(fields: [profileId], references: [id])
-  items   OrderItem[]
+  profile     Profiles      @relation(fields: [profileId], references: [id])
+  items       OrderItem[]
 }
 
 model OrderItem {
@@ -415,10 +450,13 @@ model OrderItem {
   priceAtPurchase      Int
   priceAtPurchaseBase  Int    @default(0)
   storeId              String
-  status               String // 'PENDENTE', 'PAGO', 'ENVIADO', 'ENTREGUE', 'CANCELADO'
+  status               String
   paymentMethod        String @default("PIX")
 
   order              Order              @relation(fields: [orderId], references: [id])
   productVariantSize ProductVariantSize @relation(fields: [productVariantSizeId], references: [id])
   userStore          UserStore          @relation(fields: [storeId], references: [id])
+
+  productReviews ProductReview[] // avaliações do produto comprado
+  storeReviews   StoreReview[] // avaliações da loja do item
 }
