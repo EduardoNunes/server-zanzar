@@ -215,6 +215,20 @@ export class UserCartService {
             );
           }
 
+          if (variantSize.stock < quantity) {
+            throw new Error(
+              `Estoque insuficiente para o produto ${variantSize.variant.product.name}, tamanho ${variantSize.size}.`,
+            );
+          }
+
+          if (quantity <= 0) {
+            throw new Error(
+              `Quantidade inválida para o produto ${variantSize.variant.product.name}, tamanho ${variantSize.size}.`,
+            );
+          }
+
+          // Calcula os preços
+
           const priceAtPurchase = variantSize.price * quantity;
           const priceAtPurchaseBase = variantSize.basePrice * quantity;
 
