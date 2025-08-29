@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { createClient } from '@supabase/supabase-js';
+import { race } from 'rxjs';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
@@ -36,6 +37,7 @@ export class PurchasesService {
               },
             },
             userStore: true,
+            productReviews: true, // Include productReview data
           },
         },
       },
@@ -98,9 +100,94 @@ export class PurchasesService {
           url: image.url,
           position: image.position,
         })),
+        productReview: item.productReviews
+          ? item.productReviews
+          : 'not-evaluated', // Add productReview data or "not-evaluated"
       })),
     }));
 
     return formattedPurchases;
+  }
+
+  async createEvaluateProduct(
+    profileId: string,
+    evaluationData: {
+      orderItemId: string;
+      productRating: number;
+      productComment: string;
+    },
+  ) {
+    const { orderItemId, productRating, productComment } = evaluationData;
+
+    try {
+      // 🔎 Verifica se a compra pertence ao usuário
+      const orderItem = await this.prisma.orderItem.findFirst({
+        where: {
+          id: orderItemId,
+          order: { profileId },
+        },
+        include: {
+          productVariantSize: {
+            include: {
+              variant: true,
+            },
+          },
+        },
+      });
+
+      if (!orderItem) {
+        throw new HttpException('Compra não encontrada.', HttpStatus.NOT_FOUND);
+      }
+
+      // 🔎 Verifica se já existe avaliação do produto
+      const existingProductEvaluation =
+        await this.prisma.productReview.findFirst({
+          where: { orderItemId, profileId },
+        });
+
+      if (existingProductEvaluation) {
+        throw new HttpException(
+          'Este produto já foi avaliado.',
+          HttpStatus.CONFLICT,
+        );
+      }
+
+      // 🔒 Usa transaction para criar avaliação + atualizar produto
+      const [productReview] = await this.prisma.$transaction([
+        this.prisma.productReview.create({
+          data: {
+            profileId,
+            rating: productRating,
+            comment: productComment,
+            orderItemId,
+          },
+        }),
+
+        this.prisma.product.update({
+          where: { id: orderItem.productVariantSize.variant.productId },
+          data: {
+            rating: { increment: productRating },
+            ratingCount: {
+              increment: 1,
+            },
+          },
+        }),
+      ]);
+
+      return {
+        success: true,
+        message: 'Produto avaliado com sucesso!',
+        data: { productReview },
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      throw new HttpException(
+        'Erro inesperado ao registrar avaliação.',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 }

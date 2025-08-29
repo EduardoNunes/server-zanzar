@@ -1,4 +1,12 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { JwtAuthGuard } from 'src/auth/guard/JwtAuthGuard';
 import { PurchasesService } from './purchases.service';
 
@@ -20,6 +28,22 @@ export class PurchasesController {
       profileId,
       pageNumber,
       limitNumber,
+    );
+  }
+
+  @Post('evaluate-product/:profileId')
+  async createEvaluateProduct(
+    @Param('profileId') profileId: string,
+    @Body()
+    evaluationData: {
+      orderItemId: string;
+      productRating: number;
+      productComment: string;
+    },
+  ) {
+    return this.purchasesService.createEvaluateProduct(
+      profileId,
+      evaluationData,
     );
   }
 }
