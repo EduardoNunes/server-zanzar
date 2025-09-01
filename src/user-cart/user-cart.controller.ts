@@ -3,9 +3,10 @@ import {
   Controller,
   Get,
   Post,
+  Delete,
   Query,
-  Req,
   UseGuards,
+  Put,
 } from '@nestjs/common';
 import { UserCartService } from './user-cart.service';
 import { JwtAuthGuard } from 'src/auth/guard/JwtAuthGuard';
@@ -30,8 +31,21 @@ export class UserCartController {
 
   @Get('get-cart-products')
   async getCartProducts(@Query('profileId') profileId: string) {
-
     return this.userCartService.getCartProducts(profileId);
+  }
+
+  @Delete('remove-from-cart')
+  async removeFromCart(@Body() body: any) {
+    const { profileId, itemId } = body;
+
+    return this.userCartService.removeFromCart(profileId, itemId);
+  }
+
+  @Put('update-cart-quantity')
+  async updateCartQuantity(@Body() body: any) {
+    const { profileId, itemId, quantity } = body;
+
+    return this.userCartService.updateCartQuantity(profileId, itemId, quantity);
   }
 
   @Post('buy-products')

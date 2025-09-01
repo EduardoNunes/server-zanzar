@@ -80,6 +80,89 @@ export class UserCartService {
     }
   }
 
+  async removeFromCart(profileId: string, itemId: string) {
+    try {
+      const productInCart = await this.prisma.userCart.findFirst({
+        where: { id: itemId, profileId },
+      });
+
+      if (!productInCart) {
+        throw new HttpException(
+          'Produto não encontrado no carrinho.',
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      const [deletedCartItem] = await this.prisma.$transaction([
+        this.prisma.userCart.delete({
+          where: { id: productInCart.id },
+        }),
+
+        this.prisma.profiles.update({
+          where: { id: profileId },
+          data: {
+            cartCountItems: {
+              decrement: 1,
+            },
+          },
+        }),
+      ]);
+
+      return deletedCartItem;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      throw new HttpException(
+        'Erro ao remover item do carrinho.',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  async updateCartQuantity(
+    profileId: string,
+    itemId: string,
+    newQuantity: number,
+  ) {
+    try {
+      const productInCart = await this.prisma.userCart.findFirst({
+        where: { id: itemId, profileId },
+      });
+
+      if (!productInCart) {
+        throw new HttpException(
+          'Produto não encontrado no carrinho.',
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      if (newQuantity <= 0) {
+        throw new HttpException(
+          'A quantidade deve ser pelo menos 1.',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const updatedCartItem = await this.prisma.userCart.update({
+        where: { id: productInCart.id },
+        data: { quantity: newQuantity },
+      });
+
+      return updatedCartItem;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      throw new HttpException(
+        'Erro ao atualizar a quantidade do item no carrinho.',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
   async getCartProducts(profileId: string) {
     try {
       const cartProducts = await this.prisma.userCart.findMany({
