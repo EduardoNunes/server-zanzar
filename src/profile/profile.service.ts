@@ -7,6 +7,7 @@ import {
 import { createClient } from '@supabase/supabase-js';
 import { PrismaService } from 'src/prisma/prisma.service';
 import * as jwt from 'jsonwebtoken';
+import isValidCpf from 'src/common/validations/cpf.validation';
 
 @Injectable()
 export class ProfileService {
@@ -570,8 +571,24 @@ export class ProfileService {
     country: string,
   ) {
     try {
+      // Validate CPF
+      if (!isValidCpf(cpf)) {
+        throw new BadRequestException('CPF inválido.');
+      }
+
       await this.prisma.$transaction(async (tx) => {
         let address;
+
+        const existingCpf = await tx.profiles.findFirst({
+          where: {
+            cpf,
+            id: { not: profileId },
+          },
+        });
+
+        if (existingCpf) {
+          throw new BadRequestException('CPF já está em uso por outro perfil.');
+        }
 
         if (!addressId) {
           address = await tx.address.create({
