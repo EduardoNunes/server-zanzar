@@ -54,4 +54,15 @@ export class UserCartController {
 
     return this.userCartService.buyProducts(profileId, selectedProducts);
   }
+
+  @Post('cancel-purchase-order')
+  async cancelPurchase(@Body() body: any) {
+    const { profileId, orderId, orderItemIds } = body;
+
+    return this.userCartService.cancelPurchase(
+      profileId,
+      orderId,
+      orderItemIds,
+    );
+  }
 }

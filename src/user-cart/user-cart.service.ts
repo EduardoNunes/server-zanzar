@@ -1,6 +1,8 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { createClient } from '@supabase/supabase-js';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { InjectQueue } from '@nestjs/bull';
+import { Queue } from 'bull';
+import { createClient } from '@supabase/supabase-js';
 
 @Injectable()
 export class UserCartService {
@@ -10,7 +12,10 @@ export class UserCartService {
   );
   private bucketName = process.env.BUCKET_MIDIAS;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @InjectQueue('cancelation-orders') private readonly ordersQueue: Queue,
+  ) { }
 
   async addToCart(
     profileId: string,
@@ -248,7 +253,14 @@ export class UserCartService {
     }
   }
 
-  async buyProducts(profileId: string, products: any[]) {
+  async buyProducts(
+    profileId: string,
+    products: {
+      productVariantSizeId: string;
+      quantity: number;
+      cartId: string;
+    }[],
+  ) {
     if (products.length > 5) {
       throw new HttpException(
         'Você só pode comprar até 5 produtos diferentes por vez.',
@@ -260,6 +272,7 @@ export class UserCartService {
     let totalPrice = 0;
     let totalPriceBase = 0;
     let order = null;
+    const orderItemIds: string[] = []; // ✅ armazenar os itens criados
 
     try {
       await this.prisma.$transaction(async (tx) => {
@@ -275,11 +288,7 @@ export class UserCartService {
         });
 
         for (const product of products) {
-          const { productVariantSizeId, quantity, cartId } = product as {
-            productVariantSizeId: string;
-            quantity: number;
-            cartId: string;
-          };
+          const { productVariantSizeId, quantity, cartId } = product;
 
           const variantSize = await tx.productVariantSize.findFirst({
             where: { id: productVariantSizeId },
@@ -293,40 +302,41 @@ export class UserCartService {
           });
 
           if (!variantSize) {
-            throw new Error(
-              `ProductVariantSize not found: ${productVariantSizeId}`,
+            throw new HttpException(
+              `Produto não encontrado: ${productVariantSizeId}`,
+              HttpStatus.NOT_FOUND,
             );
           }
 
           if (variantSize.stock < quantity) {
-            throw new Error(
+            throw new HttpException(
               `Estoque insuficiente para o produto ${variantSize.variant.product.name}, tamanho ${variantSize.size}.`,
+              HttpStatus.BAD_REQUEST,
             );
           }
 
           if (quantity <= 0) {
-            throw new Error(
+            throw new HttpException(
               `Quantidade inválida para o produto ${variantSize.variant.product.name}, tamanho ${variantSize.size}.`,
+              HttpStatus.BAD_REQUEST,
             );
           }
 
-          // Calcula os preços
-
+          // Calcula preços
           const priceAtPurchase = variantSize.price * quantity;
           const priceAtPurchaseBase = variantSize.basePrice * quantity;
 
-          // Atualiza os totais
           totalQuantity += quantity;
           totalPrice += priceAtPurchase;
           totalPriceBase += priceAtPurchaseBase;
 
-          await tx.orderItem.create({
+          const orderItem = await tx.orderItem.create({
             data: {
               order: { connect: { id: order.id } },
               productVariantSize: { connect: { id: productVariantSizeId } },
               quantity,
-              priceAtPurchase: variantSize.price * quantity,
-              priceAtPurchaseBase: variantSize.basePrice * quantity,
+              priceAtPurchase,
+              priceAtPurchaseBase,
               userStore: {
                 connect: { id: variantSize.variant.product.userStoreId },
               },
@@ -334,6 +344,10 @@ export class UserCartService {
             },
           });
 
+          // ✅ guarda id do item para possível cancelamento
+          orderItemIds.push(orderItem.id);
+
+          // Atualiza estoque
           await tx.productVariantSize.update({
             where: { id: productVariantSizeId },
             data: {
@@ -346,12 +360,8 @@ export class UserCartService {
           const productUpdated = await tx.product.update({
             where: { id: variantSize.variant.productId },
             data: {
-              totalSold: {
-                increment: quantity,
-              },
-              avaliableQuantity: {
-                decrement: quantity,
-              },
+              totalSold: { increment: quantity },
+              avaliableQuantity: { decrement: quantity },
             },
             select: {
               avaliableQuantity: true,
@@ -359,16 +369,12 @@ export class UserCartService {
             },
           });
 
-          // Atualiza dados básicos da loja
+          // Atualiza dados da loja
           await tx.userStore.update({
             where: { id: productUpdated.userStoreId },
             data: {
-              totalSales: {
-                increment: quantity,
-              },
-              totalRevenue: {
-                increment: variantSize.price * quantity,
-              },
+              totalSales: { increment: quantity },
+              totalRevenue: { increment: variantSize.price * quantity },
               totalFee: {
                 increment:
                   variantSize.price * quantity -
@@ -377,33 +383,24 @@ export class UserCartService {
             },
           });
 
-          // Se zerou o estoque, decrementar 1 do totalProducts
+          // Se zerou o estoque, decrementar totalProducts
           if (productUpdated.avaliableQuantity === 0) {
             await tx.userStore.update({
               where: { id: productUpdated.userStoreId },
-              data: {
-                totalProducts: {
-                  decrement: 1,
-                },
-              },
+              data: { totalProducts: { decrement: 1 } },
             });
           }
 
+          // Atualiza carrinho
           await tx.profiles.update({
             where: { id: profileId },
-            data: {
-              cartCountItems: {
-                decrement: 1,
-              },
-            },
+            data: { cartCountItems: { decrement: 1 } },
           });
 
-          await tx.userCart.delete({
-            where: { id: cartId },
-          });
+          await tx.userCart.delete({ where: { id: cartId } });
         }
 
-        // Atualiza os valores totais no pedido
+        // Atualiza totais do pedido
         await tx.order.update({
           where: { id: order.id },
           data: {
@@ -414,11 +411,135 @@ export class UserCartService {
         });
       });
 
+      //  agenda cancelamento
+      this.ordersQueue.add(
+        'cancelation-orders',
+        { profileId, orderId: order.id, orderItemIds },
+        {
+          delay: 5*60*1000, // 5 minutos
+          removeOnComplete: true,
+          removeOnFail: true,
+        },
+      );
+
       return { success: true, totalPrice, order };
     } catch (error) {
-      throw new Error('Error buying products: ' + error.message);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        'Erro ao processar compra: ' + error.message,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 
-  async cancelExpiredPixOrders() {}
+  async cancelPurchase(
+    profileId: string,
+    orderId: string,
+    orderItemIds: string[],
+  ) {
+    try {
+      const order = await this.prisma.order.findFirst({
+        where: { id: orderId, profileId },
+        include: { items: true },
+      });
+
+      if (!order) {
+        throw new HttpException('Pedido não encontrado.', HttpStatus.NOT_FOUND);
+      }
+
+      if (order.paymentStatus === 'CANCELADO') {
+        throw new HttpException(
+          'Este pedido já foi cancelado.',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      if (order.paymentStatus !== 'PENDENTE') {
+        throw new HttpException(
+          'Apenas pedidos com status PENDENTE podem ser cancelados.',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const itemsToCancel = order.items.filter((item) =>
+        orderItemIds.includes(item.id),
+      );
+
+      if (itemsToCancel.length === 0) {
+        throw new HttpException(
+          'Nenhum item válido para cancelar.',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      await this.prisma.$transaction(async (tx) => {
+        for (const item of itemsToCancel) {
+          if (item.status === 'CANCELADO') {
+            continue;
+          }
+
+          // Atualiza o status do item para CANCELADO
+          await tx.orderItem.update({
+            where: { id: item.id },
+            data: { status: 'CANCELADO' },
+          });
+
+          // Restaura o estoque do produto
+          const itemUpdated = await tx.productVariantSize.update({
+            where: { id: item.productVariantSizeId },
+            data: {
+              stock: {
+                increment: item.quantity,
+              },
+            },
+            include: {
+              variant: {
+                include: {
+                  product: true,
+                },
+              },
+            },
+          });
+
+          const productUpdated = await tx.product.update({
+            where: { id: itemUpdated.variant.productId },
+            data: {
+              totalSold: {
+                decrement: item.quantity,
+              },
+              avaliableQuantity: {
+                increment: item.quantity,
+              },
+            },
+          });
+        }
+
+        // Verifica se todos os itens do pedido foram cancelados
+        const remainingItems = await tx.orderItem.findMany({
+          where: { orderId: order.id, status: { not: 'CANCELADO' } },
+        });
+
+        if (remainingItems.length === 0) {
+          // Se todos os itens foram cancelados, atualiza o status do pedido para CANCELADO
+          await tx.order.update({
+            where: { id: order.id },
+            data: { paymentStatus: 'CANCELADO' },
+          });
+        }
+      });
+
+      return { success: true, message: 'Itens cancelados com sucesso.' };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      throw new HttpException(
+        'Erro ao cancelar itens do pedido.',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
 }

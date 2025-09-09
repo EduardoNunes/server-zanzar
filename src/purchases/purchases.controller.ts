@@ -21,7 +21,6 @@ export class PurchasesController {
     @Query('page') page: string,
     @Query('limit') limit: string,
   ) {
-    console.log('DATA', profileId, page, limit);
     const pageNumber = parseInt(page, 10) || 1;
     const limitNumber = parseInt(limit, 10) || 3;
     return this.purchasesService.getUserPurchases(
