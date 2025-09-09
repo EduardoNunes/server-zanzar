@@ -201,32 +201,18 @@ export class ChatService {
       // Busca todas as conversas em que o usuário participa
       const userChats = await this.prisma.chatParticipants.findMany({
         where: { profileId },
-        select: {
+        include: {
           conversation: {
-            select: {
-              id: true,
-              name: true,
-              isGroup: true,
-              createdAt: true,
+            include: {
               participants: {
-                select: {
-                  profile: {
-                    select: {
-                      id: true,
-                      username: true,
-                      avatarUrl: true,
-                    },
-                  },
+                include: {
+                  profile: true, // traz todos os campos do perfil
                 },
               },
               _count: {
                 select: {
                   messages: {
-                    where: {
-                      readStatus: {
-                        none: { profileId },
-                      },
-                    },
+                    where: { readStatus: { none: { profileId } } }, // mensagens não lidas
                   },
                 },
               },
@@ -235,15 +221,13 @@ export class ChatService {
         },
       });
 
-      // Formata os dados para retornar uma estrutura mais clara
+      // Formata os dados para retornar uma estrutura clara
       const formattedChats = await Promise.all(
-        userChats.map(async (chatParticipant) => {
-          const conversation = chatParticipant.conversation;
-
-          // Gerar URLs assinadas para os avatares de todos os participantes
+        userChats.map(async ({ conversation }) => {
+          // Gerar URLs assinadas para os avatares dos participantes
           const participants = await Promise.all(
-            conversation.participants.map(async (participant) => {
-              let avatarUrl = participant.profile.avatarUrl;
+            conversation.participants.map(async ({ profile }) => {
+              let avatarUrl = profile.avatarUrl;
 
               if (avatarUrl) {
                 const bucketPath = avatarUrl.replace(
@@ -253,11 +237,11 @@ export class ChatService {
 
                 const { data, error } = await this.supabase.storage
                   .from(this.bucketName)
-                  .createSignedUrl(bucketPath, 86400);
+                  .createSignedUrl(bucketPath, 86400); // 24h
 
                 if (error) {
                   throw new BadRequestException(
-                    `Erro ao gerar URL assinada para o avatar de ${participant.profile.username}: ${error.message}`,
+                    `Erro ao gerar URL assinada para o avatar de ${profile.username}: ${error.message}`,
                   );
                 }
 
@@ -265,8 +249,8 @@ export class ChatService {
               }
 
               return {
-                profileId: participant.profile.id,
-                username: participant.profile.username,
+                profileId: profile.id,
+                username: profile.username,
                 avatarUrl,
               };
             }),
