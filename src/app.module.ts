@@ -4,8 +4,6 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { RegisterModule } from './register/register.module';
 import { PostsModule } from './post-with-image/post-with-image.module';
-import { ChatController } from './chat/chat.controller';
-import { ChatService } from './chat/chat.service';
 import { ChatModule } from './chat/chat.module';
 import { ProfileModule } from './profile/profile.module';
 import { NotificationsModule } from './notifications/notifications.module';
@@ -23,11 +21,12 @@ import { ProductModule } from './product/product.module';
 import { UserCartModule } from './user-cart/user-cart.module';
 import { PurchasesModule } from './purchases/purchases.module';
 import { AsaasModule } from './asaas/asaas.module';
-import { ScheduleModule } from '@nestjs/schedule';
+import { CancelationOrdersModule } from './cancelation-orders/cancelation-orders.module';
+import { BullQueueModule } from './common/config/redis.config';
 
 @Module({
   imports: [
-    ScheduleModule.forRoot(),
+    BullQueueModule, // importa a configuração flexível
     AuthModule,
     RegisterModule,
     PostsModule,
@@ -47,9 +46,10 @@ import { ScheduleModule } from '@nestjs/schedule';
     ProductModule,
     UserCartModule,
     PurchasesModule,
-    AsaasModule
+    AsaasModule,
+    CancelationOrdersModule,
   ],
-  controllers: [AppController, ChatController],
-  providers: [AppService, ChatService],
+  controllers: [AppController],
+  providers: [AppService],
 })
 export class AppModule {}
