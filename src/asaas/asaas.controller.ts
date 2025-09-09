@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpException,
   HttpStatus,
@@ -13,6 +14,7 @@ import {
 import { JwtAuthGuard } from 'src/auth/guard/JwtAuthGuard';
 import { AsaasService } from './asaas.service';
 import { AsaasGateway } from './asaas.gateway';
+import { get } from 'http';
 
 @Controller('asaas')
 export class AsaasController {
@@ -57,6 +59,7 @@ export class AsaasController {
     return this.asaasService.createPixPayment(profileId, value, orderIdZanzar);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post('webhook-payment')
   async handleWebhook(@Body() payload: any) {
     try {
@@ -91,5 +94,20 @@ export class AsaasController {
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('cancel-payment/:paymentId')
+  async cancelPayment(@Param('paymentId') paymentId: string) {
+    return this.asaasService.cancelPayment(paymentId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('get-pix-qrcode-and-key')
+  async getQrCodeAndKey(
+    @Query('profileId') profileId: string,
+    @Query('orderId') orderId: string,
+  ) {
+    return this.asaasService.getQrCodeAndKey(profileId, orderId);
   }
 }

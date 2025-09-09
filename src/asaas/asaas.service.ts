@@ -111,14 +111,18 @@ export class AsaasService {
     orderIdZanzar: string,
   ) {
     try {
-      const now = new Date();
-      now.setMinutes(now.getMinutes() + 5);
-      const expirationDate = now.toISOString();
-
       const profile = await this.prisma.profiles.findFirst({
         where: { id: profileId },
       });
 
+      if (!profile) {
+        throw new HttpException(
+          { message: 'Perfil não encontrado', statusCode: 404 },
+          404,
+        );
+      }
+
+      // Busca ou cria o cliente no Asaas
       const customerData = await firstValueFrom(
         this.httpService.get('/customers', {
           params: { cpfCnpj: profile.cpf },
@@ -128,57 +132,74 @@ export class AsaasService {
         }),
       );
 
+      if (!customerData.data?.data?.[0]) {
+        throw new HttpException(
+          { message: 'Cliente não encontrado no Asaas', statusCode: 404 },
+          404,
+        );
+      }
+
+      const customerId = customerData.data.data[0].id;
+
+      // Prepara os dados do pagamento
       const paymentData = {
-        customer: customerData.data.data[0].id,
+        customer: customerId,
         billingType: 'PIX',
         value: value / 100,
-        dueDate: now,
-        expirationDate,
+        dueDate: new Date().toISOString().split('T')[0], // apenas a data
         description: 'Compra de produtos pelo Zanzar',
       };
 
-      const response = await firstValueFrom(
-        this.httpService.post('/payments', paymentData, {
-          headers: {
-            access_token: process.env.ASAAS_API_KEY,
-            'Content-Type': 'application/json',
+      // Transaction Prisma
+      const result = await this.prisma.$transaction(async (tx) => {
+        // 1. Cria o pagamento no Asaas
+        const response = await firstValueFrom(
+          this.httpService.post('/payments', paymentData, {
+            headers: {
+              access_token: process.env.ASAAS_API_KEY,
+              'Content-Type': 'application/json',
+            },
+          }),
+        );
+
+        const payment = response.data;
+
+        // 2. Atualiza o pedido com o ID do pagamento
+        await tx.order.update({
+          where: { id: orderIdZanzar },
+          data: {
+            asaasPaymentId: payment.id,
           },
-        }),
-      );
+        });
 
-      const payment = response.data;
+        // 3. Busca o QR Code do pagamento
+        const paymentPix = await firstValueFrom(
+          this.httpService.get(`/payments/${payment.id}/pixQrCode`, {
+            headers: {
+              access_token: process.env.ASAAS_API_KEY,
+              'Content-Type': 'application/json',
+            },
+          }),
+        );
 
-      await this.prisma.order.update({
-        where: { id: orderIdZanzar },
-        data: {
-          asaasPaymentId: payment.id,
-        },
+        return {
+          message: 'Cobrança PIX criada com sucesso.',
+          statusCode: 201,
+          pix: {
+            pixQrCode: paymentPix.data.encodedImage,
+            pixCopyPasteKey: paymentPix.data.payload,
+            expirationDate: paymentPix.data.expirationDate,
+          },
+          payment: {
+            id: payment.id,
+            value: payment.value,
+            dueDate: payment.dueDate,
+            status: payment.status,
+          },
+        };
       });
 
-      const paymentPix = await firstValueFrom(
-        this.httpService.get(`/payments/${payment.id}/pixQrCode`, {
-          headers: {
-            access_token: process.env.ASAAS_API_KEY,
-            'Content-Type': 'application/json',
-          },
-        }),
-      );
-
-      return {
-        message: 'Cobrança PIX criada com sucesso.',
-        statusCode: 201,
-        pix: {
-          pixQrCode: paymentPix.data.encodedImage,
-          pixCopyPasteKey: paymentPix.data.payload,
-          expirationDate: paymentPix.data.expirationDate,
-        },
-        payment: {
-          id: payment.id,
-          value: payment.value,
-          dueDate: payment.dueDate,
-          status: payment.status,
-        },
-      };
+      return result;
     } catch (error) {
       const status = error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR;
       const data = error.response?.data || 'Erro ao criar pagamento PIX';
@@ -223,6 +244,109 @@ export class AsaasService {
           statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         },
         HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  async cancelPayment(paymentId: string) {
+    try {
+      const response = await firstValueFrom(
+        this.httpService.delete(`/payments/${paymentId}`, {
+          headers: {
+            access_token: process.env.ASAAS_API_KEY,
+          },
+        }),
+      );
+
+      return {
+        message: 'Pagamento cancelado com sucesso.',
+        statusCode: HttpStatus.OK,
+        payment: response.data,
+      };
+    } catch (error) {
+      const status = error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR;
+      const data = error.response?.data || 'Erro ao cancelar pagamento';
+
+      throw new HttpException(
+        {
+          message: 'Erro ao cancelar pagamento.',
+          details: data,
+          statusCode: status,
+        },
+        status,
+      );
+    }
+  }
+
+  async getQrCodeAndKey(profileId: string, orderId: string) {
+    console.log('CHAMOU REQUISIÇÃO getQrCodeAndKey', { profileId, orderId });
+
+    try {
+      const asaasPaymentId = await this.prisma.order.findFirst({
+        where: { id: orderId },
+      });
+
+      if (!asaasPaymentId) {
+        throw new HttpException(
+          {
+            message: 'Pagamento não encontrado.',
+            statusCode: HttpStatus.NOT_FOUND,
+          },
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      if (asaasPaymentId.paymentStatus === 'CANCELADO') {
+        throw new HttpException(
+          {
+            message: 'Pagamento já foi cancelado.',
+            statusCode: HttpStatus.BAD_REQUEST,
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      } else if (asaasPaymentId.paymentStatus === 'PAGO') {
+        throw new HttpException(
+          {
+            message: 'Pagamento já foi realizado',
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const response = await firstValueFrom(
+        this.httpService.get(
+          `/payments/${asaasPaymentId.asaasPaymentId}/pixQrCode`,
+          {
+            headers: {
+              access_token: process.env.ASAAS_API_KEY,
+              'Content-Type': 'application/json',
+            },
+          },
+        ),
+      );
+      console.log('RESPONSE PIX QRCODE', response.data);
+
+      const { encodedImage, payload, expirationDate } = response.data;
+
+      return {
+        message: 'QR Code e chave PIX gerados com sucesso.',
+        statusCode: HttpStatus.OK,
+        qrCode: encodedImage,
+        pixCopyPaste: payload,
+        expirationDate,
+      };
+    } catch (error) {
+      const status = error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR;
+      const data =
+        error.response?.data || 'Erro ao obter QR Code e chave PIX do Asaas.';
+
+      throw new HttpException(
+        {
+          message: 'Erro ao obter QR Code e chave PIX.',
+          details: data,
+          statusCode: status,
+        },
+        status,
       );
     }
   }
